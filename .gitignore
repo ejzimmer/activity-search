@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+.netlify
+# Strava exports contain personal data; keep them out of git
+strava-export*/
+export_*/
+*.zip
