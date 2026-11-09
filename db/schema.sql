@@ -4,11 +4,13 @@
 -- UPDATE from these columns), not a re-import.
 
 CREATE TABLE IF NOT EXISTS activities (
-  id                  BIGINT PRIMARY KEY,          -- Strava activity id
+  id                  BIGINT PRIMARY KEY,          -- Garmin Connect activityId
   name                TEXT NOT NULL,
-  sport_type          TEXT,                         -- e.g. Run, Ride, Hike
+  sport_type          TEXT,                         -- Garmin typeKey, e.g. running, cycling, hiking
   description         TEXT,
-  start_date          TIMESTAMPTZ NOT NULL,         -- UTC, from the export
+  location_name       TEXT,
+  start_date          TIMESTAMPTZ NOT NULL,         -- UTC
+  start_date_local    TIMESTAMP,                    -- wall-clock time where the activity happened
   distance_m          DOUBLE PRECISION,
   moving_time_s       INTEGER,
   elapsed_time_s      INTEGER,
@@ -18,15 +20,13 @@ CREATE TABLE IF NOT EXISTS activities (
   average_heartrate   DOUBLE PRECISION,
   max_heartrate       DOUBLE PRECISION,
   calories            DOUBLE PRECISION,
-  commute             BOOLEAN NOT NULL DEFAULT FALSE,
-  gear                TEXT,
   start_lat           DOUBLE PRECISION,
   start_lng           DOUBLE PRECISION,
   end_lat             DOUBLE PRECISION,
   end_lng             DOUBLE PRECISION,
   summary_polyline    TEXT,                         -- Google encoded polyline, simplified
-  source_file         TEXT,                         -- path inside the export, e.g. activities/123.gpx
-  raw                 JSONB,                        -- the original CSV row, for anything we didn't map
+  track_checked_at    TIMESTAMPTZ,                  -- when we last tried to read the activity file
+  raw                 JSONB,                        -- the full Garmin summary, for anything we didn't map
   imported_at         TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

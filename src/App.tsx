@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ActivitiesPage } from '../lib/types.ts'
-import { formatDate, formatDistance, formatDuration, formatElevation } from './format.ts'
+import { formatDate, formatDistance, formatDuration, formatElevation, formatSportType } from './format.ts'
 
 function pageFromUrl(): number {
   const n = Number(new URLSearchParams(window.location.search).get('page'))
@@ -61,11 +61,11 @@ export function App() {
       )}
 
       {data && data.total === 0 ? (
-        <p>No activities yet. Run the import script to load your Strava export.</p>
+        <p>No activities yet. Run <code>npm run sync</code> to load them from Garmin Connect.</p>
       ) : (
         <div className="table-wrap" aria-busy={loading}>
           <table>
-            <caption className="visually-hidden">Your Strava activities, newest first</caption>
+            <caption className="visually-hidden">Your activities, newest first</caption>
             <thead>
               <tr>
                 <th scope="col">Date</th>
@@ -81,7 +81,7 @@ export function App() {
                 <tr key={a.id}>
                   <td>{formatDate(a.start_date)}</td>
                   <th scope="row">{a.name}</th>
-                  <td>{a.sport_type ?? '–'}</td>
+                  <td>{formatSportType(a.sport_type)}</td>
                   <td className="num">{formatDistance(a.distance_m)}</td>
                   <td className="num">{formatDuration(a.moving_time_s)}</td>
                   <td className="num">{formatElevation(a.elevation_gain_m)}</td>

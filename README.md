@@ -1,40 +1,52 @@
 # Activity mapper
 
-Search and map your Strava activities. This first version loads your Strava bulk
-export into Postgres and shows every activity in a paginated table.
+Search and map your Garmin activities. This first version pulls your activities
+straight from Garmin Connect (no third party in between) into Postgres and shows
+them in a paginated table.
 
 - **Front end:** React + Vite (`src/`)
 - **API:** a Netlify Function at `GET /api/activities?page=1&pageSize=25` (`netlify/functions/activities.ts`)
+- **Data source:** the [Garmin Connect Personal API](https://developer.garmin.com/gc-developer-program/personal/personal-faq/),
+  via `npm run sync` (`scripts/sync-garmin.ts`)
 - **Database:** Neon Postgres in Sydney, plain tables for now (`db/schema.sql`). Start/end
   coordinates and a simplified route polyline are stored already, so PostGIS and the map
-  can be added later without re-importing.
+  can be added later without re-syncing.
 
 ## One-time setup
 
-### 1. Request your Strava export (do this first, it takes a while)
+### 1. Create a Garmin personal API key
 
-Go to <https://www.strava.com/athlete/delete_your_account> and click **Request your archive**
-(despite the URL, this doesn't delete anything). Strava emails a download link, usually
-within a few hours. Unzip it somewhere outside this repo. You should see `activities.csv`
-and an `activities/` folder.
+Go to <https://connect.garmin.com/app/settings/personalApiToken> and create a key.
+Pick the longest expiry you're comfortable with (up to a year). The key is shown
+**once**, so copy it straight away. It's for your own data only.
 
 ### 2. Create the database in Sydney
 
 1. Sign in at <https://console.neon.tech> and click **New project**.
 2. Pick **AWS Asia Pacific (Sydney)** as the region. This can't be changed later.
 3. Once it's created, click **Connect**, tick **Connection pooling**, and copy the connection string.
-4. In this repo: `cp .env.example .env` and paste the string as `DATABASE_URL`.
+4. In this repo: `cp .env.example .env`, paste the string as `DATABASE_URL`, and paste
+   your Garmin key as `GARMIN_PERSONAL_API_KEY`.
 
-### 3. Create the tables and import
+### 3. Create the tables and sync
 
 ```sh
 npm install
 npm run db:migrate
-npm run import -- ~/Downloads/export_12345678   # the unzipped export folder
+npm run sync
 ```
 
-The import is safe to re-run; activities are matched on their Strava id. Activities
-with no GPS (treadmill, gym) are imported without coordinates.
+The first sync fetches every activity, then downloads each one's original file
+(usually FIT) to get the route. That's one request per activity with a short pause
+between them, so a few thousand activities takes a while. It's safe to stop and
+re-run: activities are matched on their Garmin id and each file is only downloaded once.
+
+After that, `npm run sync` only fetches activities from the last couple of days
+before your newest one. Use `npm run sync -- --full` to refresh every summary.
+Activities with no GPS (treadmill, gym) are stored without coordinates.
+
+If the sync says Garmin rejected the key, it has probably expired: create a new
+one and update `.env`.
 
 ### 4. Run it locally
 
@@ -55,6 +67,6 @@ npm run dev                  # http://localhost:8888
 ## Development
 
 ```sh
-npm test          # unit tests (CSV/track parsing, pagination)
+npm test          # unit tests (Garmin client, track parsing, pagination)
 npm run typecheck
 ```

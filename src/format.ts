@@ -22,3 +22,10 @@ const dateFormat = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', tim
 export function formatDate(iso: string): string {
   return dateFormat.format(new Date(iso))
 }
+
+/** Garmin type keys look like "trail_running"; show them as "Trail running". */
+export function formatSportType(typeKey: string | null): string {
+  if (!typeKey) return '–'
+  const words = typeKey.replace(/_/g, ' ').trim()
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
