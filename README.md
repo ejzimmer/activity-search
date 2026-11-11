@@ -1,4 +1,4 @@
-# Activity mapper
+# Activity search
 
 Search and map your Garmin activities. This first version pulls your activities
 straight from Garmin Connect (no third party in between) into Postgres and shows
