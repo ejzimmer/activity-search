@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { ActivitiesPage } from '../lib/types.ts'
+import type { ActivitiesPage, SyncStatus } from '../lib/types.ts'
 import { formatDate, formatDistance, formatDuration, formatElevation, formatSportType } from './format.ts'
 
 function pageFromUrl(): number {
@@ -61,7 +61,12 @@ export function App() {
       )}
 
       {data && data.total === 0 ? (
-        <p>No activities yet. Run <code>npm run sync</code> to load them from Garmin Connect.</p>
+        <p>
+          No activities yet.{' '}
+          {data.sync?.running
+            ? 'The first sync from Garmin is running now. Reload in a few minutes.'
+            : 'They\'ll appear after the first sync from Garmin, which runs every hour.'}
+        </p>
       ) : (
         <div className="table-wrap" aria-busy={loading}>
           <table>
@@ -103,6 +108,19 @@ export function App() {
           Next
         </button>
       </nav>
+
+      {data?.sync && <SyncNote sync={data.sync} />}
     </main>
+  )
+}
+
+function SyncNote({ sync }: { sync: SyncStatus }) {
+  if (sync.running) return <p className="sync-note">Syncing with Garmin…</p>
+  if (!sync.last_finished_at) return null
+  return (
+    <p className="sync-note">
+      Last synced with Garmin {formatDate(sync.last_finished_at)}
+      {sync.last_result ? `: ${sync.last_result}` : ''}
+    </p>
   )
 }

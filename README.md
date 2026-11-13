@@ -6,13 +6,15 @@ them in a paginated table.
 
 - **Front end:** React + Vite (`src/`)
 - **API:** a Netlify Function at `GET /api/activities?page=1&pageSize=25` (`netlify/functions/activities.ts`)
-- **Data source:** the [Garmin Connect Personal API](https://developer.garmin.com/gc-developer-program/personal/personal-faq/),
-  via `npm run sync` (`scripts/sync-garmin.ts`)
-- **Database:** Neon Postgres in Sydney, plain tables for now (`db/schema.sql`). Start/end
-  coordinates and a simplified route polyline are stored already, so PostGIS and the map
-  can be added later without re-syncing.
+- **Data source:** the [Garmin Connect Personal API](https://developer.garmin.com/gc-developer-program/personal/personal-faq/).
+  Netlify syncs every hour (`netlify/functions/sync-schedule.ts` starts
+  `netlify/functions/sync-garmin.ts`, which does the work in `lib/sync.ts`).
+- **Database:** Neon Postgres in Sydney, plain tables for now (`lib/schema.ts`). The
+  tables are created automatically by the first sync. Start/end coordinates and a
+  simplified route polyline are stored already, so PostGIS and the map can be added
+  later without re-syncing.
 
-## One-time setup
+## Setup (all in the browser)
 
 ### 1. Create a Garmin personal API key
 
@@ -24,49 +26,44 @@ Pick the longest expiry you're comfortable with (up to a year). The key is shown
 
 1. Sign in at <https://console.neon.tech> and click **New project**.
 2. Pick **AWS Asia Pacific (Sydney)** as the region. This can't be changed later.
-3. Once it's created, click **Connect**, tick **Connection pooling**, and copy the connection string.
-4. In this repo: `cp .env.example .env`, paste the string as `DATABASE_URL`, and paste
-   your Garmin key as `GARMIN_PERSONAL_API_KEY`.
+3. Once it's created, click **Connect**, turn on **Connection pooling**, and copy the
+   connection string.
 
-### 3. Create the tables and sync
+### 3. Deploy to Netlify
+
+1. At <https://app.netlify.com>, click **Add new project → Import an existing project**,
+   choose GitHub, then this repo. Keep the build settings it suggests (they come from
+   `netlify.toml`) and deploy.
+2. Go to **Project configuration → Environment variables** and add two variables.
+   Tick "Contains secret values" for both.
+   - `DATABASE_URL`: the Neon connection string
+   - `GARMIN_PERSONAL_API_KEY`: your Garmin key
+3. Go to **Deploys → Trigger deploy → Deploy project** so the functions pick up the variables.
+4. Optional: if your plan offers it, set **Project configuration → Build & deploy →
+   Functions region** to **Asia Pacific (Sydney)** so the API sits next to the
+   database, then deploy again.
+
+### 4. Run the first sync
+
+Syncs run every hour on their own. To start one now, go to **Logs → Functions →
+sync-schedule** and click **Run now**.
+
+The first sync fetches every activity, then downloads each one's original file
+(usually FIT) to get the route. Each run stops after about 12 minutes and the next
+one carries on, so a long history fills in over a few hours. The bottom of the page
+shows when the last sync finished and what it did. Activities with no GPS
+(treadmill, gym) are stored without coordinates.
+
+If the page says Garmin rejected the key, it has expired: create a new one and
+update `GARMIN_PERSONAL_API_KEY`, then trigger a deploy.
+
+## Development (needs a terminal)
 
 ```sh
 npm install
-npm run db:migrate
-npm run sync
-```
-
-The first sync fetches every activity, then downloads each one's original file
-(usually FIT) to get the route. That's one request per activity with a short pause
-between them, so a few thousand activities takes a while. It's safe to stop and
-re-run: activities are matched on their Garmin id and each file is only downloaded once.
-
-After that, `npm run sync` only fetches activities from the last couple of days
-before your newest one. Use `npm run sync -- --full` to refresh every summary.
-Activities with no GPS (treadmill, gym) are stored without coordinates.
-
-If the sync says Garmin rejected the key, it has probably expired: create a new
-one and update `.env`.
-
-### 4. Run it locally
-
-```sh
-npm install -g netlify-cli   # once
-npm run dev                  # http://localhost:8888
-```
-
-### 5. Deploy to Netlify
-
-1. In Netlify, **Add new project → Import an existing project** and choose this repo.
-   The build settings come from `netlify.toml`.
-2. **Project configuration → Environment variables:** add `DATABASE_URL` with the same
-   connection string.
-3. **Project configuration → Build & deploy → Functions region:** choose
-   **Asia Pacific (Sydney)** so the API sits next to the database, then redeploy.
-
-## Development
-
-```sh
-npm test          # unit tests (Garmin client, track parsing, pagination)
+cp .env.example .env     # then fill in DATABASE_URL and GARMIN_PERSONAL_API_KEY
+npm run sync             # sync from your machine instead of waiting for Netlify
+npm run dev              # http://localhost:8888, needs `npm install -g netlify-cli`
+npm test                 # unit tests (Garmin client, track parsing, pagination)
 npm run typecheck
 ```

@@ -122,3 +122,9 @@ button:focus-visible {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+.sync-note {
+  margin-top: 2rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}

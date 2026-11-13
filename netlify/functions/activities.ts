@@ -1,38 +1,50 @@
 import type { Config } from '@netlify/functions'
 import { getSql } from '../../lib/db.ts'
 import { parsePagination } from '../../lib/pagination.ts'
-import type { Activity, ActivitiesPage } from '../../lib/types.ts'
+import type { Activity, ActivitiesPage, SyncStatus } from '../../lib/types.ts'
 
 /** GET /api/activities?page=1&pageSize=25 — newest first, no filtering yet. */
 export default async (req: Request): Promise<Response> => {
-  if (req.method !== 'GET') {
-    return Response.json({ error: 'Method not allowed' }, { status: 405, headers: { Allow: 'GET' } })
-  }
-
   const { page, pageSize, offset } = parsePagination(new URL(req.url).searchParams)
   const sql = getSql()
 
-  const [rows, [{ count }]] = await Promise.all([
-    sql`
-      SELECT id::text, name, sport_type, start_date, distance_m, moving_time_s, elapsed_time_s,
-             elevation_gain_m, start_lat, start_lng, summary_polyline
-      FROM activities
-      ORDER BY start_date DESC, id DESC
-      LIMIT ${pageSize} OFFSET ${offset}
-    `,
-    sql`SELECT count(*)::int AS count FROM activities`,
-  ])
-
-  const body: ActivitiesPage = {
-    activities: rows as Activity[],
-    page,
-    pageSize,
-    total: count as number,
-    totalPages: Math.max(1, Math.ceil((count as number) / pageSize)),
+  try {
+    const [rows, [{ count }], [sync]] = await Promise.all([
+      sql`
+        SELECT id::text, name, sport_type, start_date, distance_m, moving_time_s, elapsed_time_s,
+               elevation_gain_m, start_lat, start_lng, summary_polyline
+        FROM activities
+        ORDER BY start_date DESC, id DESC
+        LIMIT ${pageSize} OFFSET ${offset}
+      `,
+      sql`SELECT count(*)::int AS count FROM activities`,
+      sql`
+        SELECT last_started_at, last_finished_at, last_result,
+               coalesce(locked_until > now(), false) AS running
+        FROM sync_state WHERE id = 1
+      `,
+    ])
+    const total = count as number
+    const body: ActivitiesPage = {
+      activities: rows as Activity[],
+      page,
+      pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      sync: (sync as SyncStatus | undefined) ?? null,
+    }
+    return Response.json(body)
+  } catch (err) {
+    // 42P01: the tables don't exist yet because the first sync hasn't run.
+    if ((err as { code?: string }).code === '42P01') {
+      const body: ActivitiesPage = { activities: [], page, pageSize, total: 0, totalPages: 1, sync: null }
+      return Response.json(body)
+    }
+    throw err
   }
-  return Response.json(body)
 }
 
 export const config: Config = {
   path: '/api/activities',
+  method: 'GET',
 }

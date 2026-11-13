@@ -18,4 +18,12 @@ export interface ActivitiesPage {
   pageSize: number
   total: number
   totalPages: number
+  sync: SyncStatus | null
+}
+
+export interface SyncStatus {
+  last_started_at: string | null
+  last_finished_at: string | null
+  last_result: string | null
+  running: boolean
 }
