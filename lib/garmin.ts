@@ -200,7 +200,6 @@ export interface ActivityRow {
   raw: GarminActivity;
 }
 
-/** Garmin's zoneless "YYYY-MM-DD HH:MM:SS" → Temporal.PlainDateTime. */
 function parseGarminDateTime(value: string): Temporal.PlainDateTime {
   try {
     return Temporal.PlainDateTime.from(value.trim());

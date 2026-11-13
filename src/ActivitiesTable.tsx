@@ -1,4 +1,5 @@
-import type { Activity } from '../lib/types.ts';
+import './ActivitiesTable.css';
+import type { Activity } from './types.ts';
 import {
   formatDate,
   formatDistance,

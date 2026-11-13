@@ -1,3 +1,4 @@
+import './App.css';
 import { ActivitiesTable } from './ActivitiesTable.tsx';
 import { NoActivitiesMessage } from './NoActivitiesMessage.tsx';
 import { PaginationNav } from './PaginationNav.tsx';

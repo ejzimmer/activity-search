@@ -1,4 +1,5 @@
-import type { SyncStatus } from '../lib/types.ts';
+import './SyncNote.css';
+import type { SyncStatus } from './types.ts';
 import { formatDate } from './format.ts';
 
 type SyncNoteProps = {

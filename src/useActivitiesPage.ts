@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { ActivitiesPage } from '../lib/types.ts';
+import type { ActivitiesPageResponse } from '../lib/types.ts';
+import { parseActivitiesPage } from './parseActivitiesPage.ts';
+import type { ActivitiesPage } from './types.ts';
 
 type ActivitiesPageState =
   | { status: 'loading'; data?: ActivitiesPage }
@@ -18,7 +20,9 @@ export function useActivitiesPage(page: number): ActivitiesPageState {
       .then(async (response) => {
         if (!response.ok)
           throw new Error(`The API returned ${response.status}`);
-        return (await response.json()) as ActivitiesPage;
+        return parseActivitiesPage(
+          (await response.json()) as ActivitiesPageResponse,
+        );
       })
       .then((data) => setState({ status: 'ready', data }))
       .catch((error: Error) => {

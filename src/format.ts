@@ -5,12 +5,9 @@ export function formatDistance(metres: number | null): string {
 
 export function formatDuration(seconds: number | null): string {
   if (seconds === null) return '–';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  const mm = String(m).padStart(2, '0');
-  const ss = String(s).padStart(2, '0');
-  return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`;
+  return Temporal.Duration.from({ seconds })
+    .round({ largestUnit: 'hours' })
+    .toLocaleString(undefined, { style: 'digital', hoursDisplay: 'auto' });
 }
 
 export function formatElevation(metres: number | null): string {
@@ -18,8 +15,8 @@ export function formatElevation(metres: number | null): string {
   return `${Math.round(metres)} m`;
 }
 
-export function formatDate(iso: string): string {
-  return Temporal.Instant.from(iso).toLocaleString(undefined, {
+export function formatDate(instant: Temporal.Instant): string {
+  return instant.toLocaleString(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
   });

@@ -28,7 +28,7 @@ export interface SyncResult {
   message: string;
 }
 
-export async function runSync(opts: SyncOptions): Promise<SyncResult> {
+export async function syncWithGarmin(opts: SyncOptions): Promise<SyncResult> {
   const { sql, log = console.log } = opts;
   await ensureSchema(sql);
 

@@ -1,3 +1,4 @@
+import './PaginationNav.css';
 type PaginationNavProps = {
   page: number;
   totalPages: number;

@@ -1,7 +1,7 @@
 import type { Config } from '@netlify/functions';
 import { createSyncToken } from '../../lib/sync.ts';
 
-export default async (): Promise<Response> => {
+export default async function startHourlySync(): Promise<Response> {
   const apiKey = process.env.GARMIN_PERSONAL_API_KEY;
   const siteUrl = process.env.URL;
   if (!apiKey || !siteUrl) {
@@ -14,7 +14,7 @@ export default async (): Promise<Response> => {
   });
   console.log(`Started sync: ${res.status}`);
   return new Response(null, { status: res.ok ? 202 : 502 });
-};
+}
 
 export const config: Config = {
   schedule: '@hourly',
