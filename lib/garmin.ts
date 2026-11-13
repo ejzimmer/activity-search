@@ -6,6 +6,8 @@
  * https://github.com/garmin/connect-personal-api-python.
  */
 
+import { Temporal } from 'temporal-polyfill'
+
 export const DEFAULT_BASE_URL = 'https://personal.connectapi.garmin.com'
 const TOKEN_PATH = '/personalapitoken-service/personal-api/personal-api-key/token'
 
@@ -157,12 +159,23 @@ export interface ActivityRow {
   raw: GarminActivity
 }
 
-/** Garmin's "YYYY-MM-DD HH:MM:SS" (no zone) → ISO string, treating it as UTC. */
+/** Garmin's zoneless "YYYY-MM-DD HH:MM:SS" → Temporal.PlainDateTime. */
+function parseGarminDateTime(value: string): Temporal.PlainDateTime {
+  try {
+    return Temporal.PlainDateTime.from(value.trim())
+  } catch {
+    throw new Error(`Unrecognised Garmin timestamp: "${value}"`)
+  }
+}
+
+/** startTimeGMT → an ISO instant, e.g. "2024-03-04T20:12:45Z". */
 export function parseGarminGmt(value: string): string {
-  const m = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?$/)
-  if (!m) throw new Error(`Unrecognised Garmin timestamp: "${value}"`)
-  const [, y, mo, d, h, mi, s] = m.map(Number)
-  return new Date(Date.UTC(y, mo - 1, d, h, mi, s)).toISOString()
+  return parseGarminDateTime(value).toZonedDateTime('UTC').toInstant().toString()
+}
+
+/** startTimeLocal → an ISO local date-time with no zone, e.g. "2024-03-05T07:12:45". */
+export function parseGarminLocal(value: string): string {
+  return parseGarminDateTime(value).toString()
 }
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
@@ -188,7 +201,7 @@ export function rowFromGarmin(a: GarminActivity): ActivityRow {
     description: text(a.description),
     location_name: text(a.locationName),
     start_date: parseGarminGmt(a.startTimeGMT),
-    start_date_local: local ? local.replace(' ', 'T') : null,
+    start_date_local: local ? parseGarminLocal(local) : null,
     distance_m: num(a.distance),
     moving_time_s: num(a.movingDuration) === null ? null : Math.round(a.movingDuration!),
     elapsed_time_s: (() => {

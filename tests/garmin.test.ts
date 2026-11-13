@@ -3,12 +3,13 @@ import { GarminApiError, GarminClient, parseGarminGmt, rowFromGarmin, type Garmi
 
 describe('parseGarminGmt', () => {
   it('treats the timestamp as UTC', () => {
-    expect(parseGarminGmt('2024-03-04 20:12:45')).toBe('2024-03-04T20:12:45.000Z')
-    expect(parseGarminGmt('2024-03-04T20:12:45.0')).toBe('2024-03-04T20:12:45.000Z')
+    expect(parseGarminGmt('2024-03-04 20:12:45')).toBe('2024-03-04T20:12:45Z')
+    expect(parseGarminGmt('2024-03-04T20:12:45.0')).toBe('2024-03-04T20:12:45Z')
   })
 
-  it('throws on something unexpected', () => {
+  it('throws on something unexpected or impossible', () => {
     expect(() => parseGarminGmt('Mar 4, 2024')).toThrow(/Unrecognised/)
+    expect(() => parseGarminGmt('2024-02-30 10:00:00')).toThrow(/Unrecognised/)
   })
 })
 
@@ -45,7 +46,7 @@ describe('rowFromGarmin', () => {
       sport_type: 'running',
       description: null,
       location_name: 'Sydney',
-      start_date: '2024-03-04T20:12:45.000Z',
+      start_date: '2024-03-04T20:12:45Z',
       start_date_local: '2024-03-05T07:12:45',
       distance_m: 5230.4,
       moving_time_s: 1800,
