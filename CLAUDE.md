@@ -78,11 +78,9 @@ This applies to a file with three tests in it, not just to big ones.
 
 Reply to review comments, push the fix, and leave the thread open. Resolving is the reviewer's call - it's how they track what they've checked, and closing a thread on their behalf hides it from them before they've seen the change. This holds even when the comment is unambiguous and the fix is obviously what was asked for.
 
-## Don't write PR descriptions
+## PR descriptions are for the record, not for erin
 
-Open the PR with a title and an empty body. A description only ever restates what's already been said in chat or what the diff and the commit messages say themselves, and those are easier to trust because they can't drift from the code the way a summary written beside it does. Put the reasoning for a change in its commit message, where it belongs.
-
-Don't report back on the description either - not writing one, updating one, or what went in it.
+Write a PR description if it's useful, but don't expect erin to read it. Anything erin needs to know or act on goes in chat as well.
 
 ## No placeholder text in form fields
 
