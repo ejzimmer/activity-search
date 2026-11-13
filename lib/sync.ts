@@ -1,117 +1,137 @@
-/**
- * Pulls activities from Garmin Connect into the activities table.
- *
- * The first run fetches every activity; later runs only fetch the last couple
- * of days before the newest one. Each activity's original file is downloaded
- * once to build its route. A run stops cleanly at `deadline` and the next run
- * carries on, so a long history gets filled in over several runs.
- */
-import { createHash } from 'node:crypto'
-import type { Sql } from './db.ts'
-import { GarminApiError, GarminClient, rowFromGarmin, type ActivityRow } from './garmin.ts'
-import { ensureSchema } from './schema.ts'
-import { pointsFromZip, summariseTrack } from './tracks.ts'
+import { createHash } from 'node:crypto';
+import type { Sql } from './db.ts';
+import {
+  GarminApiError,
+  GarminClient,
+  createActivityRow,
+  type ActivityRow,
+} from './garmin.ts';
+import { ensureSchema } from './schema.ts';
+import { readZipPoints, summariseTrack } from './tracks.ts';
 
-const PAGE_SIZE = 100
+const PAGE_SIZE = 100;
 
 export interface SyncOptions {
-  sql: Sql
-  garmin: GarminClient
-  /** Re-fetch every activity summary, not just recent ones. */
-  full?: boolean
+  sql: Sql;
+  garmin: GarminClient;
+  full?: boolean;
   /** Epoch ms after which the run stops starting new work. */
-  deadline?: number
-  log?: (message: string) => void
+  deadline?: number;
+  log?: (message: string) => void;
 }
 
 export interface SyncResult {
-  status: 'done' | 'partial' | 'skipped'
-  activitiesSaved: number
-  routesSaved: number
-  routesRemaining: number
-  message: string
+  status: 'done' | 'partial' | 'skipped';
+  activitiesSaved: number;
+  routesSaved: number;
+  routesRemaining: number;
+  message: string;
 }
 
-/** Runs a sync unless another one is already running, and records the outcome. */
 export async function runSync(opts: SyncOptions): Promise<SyncResult> {
-  const { sql, log = console.log } = opts
-  await ensureSchema(sql)
+  const { sql, log = console.log } = opts;
+  await ensureSchema(sql);
 
-  const deadline = opts.deadline ?? Infinity
-  const lockMinutes = Number.isFinite(deadline) ? Math.ceil((deadline - Date.now()) / 60_000) + 2 : 24 * 60
+  const deadline = opts.deadline ?? Infinity;
+  const lockMinutes = Number.isFinite(deadline)
+    ? Math.ceil((deadline - Date.now()) / 60_000) + 2
+    : 24 * 60;
   const claimed = await sql.query(
     `UPDATE sync_state SET locked_until = now() + make_interval(mins => $1), last_started_at = now()
      WHERE id = 1 AND (locked_until IS NULL OR locked_until < now()) RETURNING id`,
     [lockMinutes],
-  )
+  );
   if ((claimed as unknown[]).length === 0) {
-    const message = 'Another sync is already running'
-    log(message)
-    return { status: 'skipped', activitiesSaved: 0, routesSaved: 0, routesRemaining: 0, message }
+    const message = 'Another sync is already running';
+    log(message);
+    return {
+      status: 'skipped',
+      activitiesSaved: 0,
+      routesSaved: 0,
+      routesRemaining: 0,
+      message,
+    };
   }
 
   try {
-    const result = await syncUnlocked({ ...opts, deadline, log })
-    await sql`UPDATE sync_state SET locked_until = NULL, last_finished_at = now(), last_result = ${result.message} WHERE id = 1`
-    return result
+    const result = await syncActivities({ ...opts, deadline, log });
+    await sql`UPDATE sync_state SET locked_until = NULL, last_finished_at = now(), last_result = ${result.message} WHERE id = 1`;
+    return result;
   } catch (err) {
-    const keyRejected = err instanceof GarminApiError && (err.status === 401 || err.status === 403)
+    const keyRejected =
+      err instanceof GarminApiError &&
+      (err.status === 401 || err.status === 403);
     const message = keyRejected
       ? 'Failed: Garmin rejected the API key. It may have expired; create a new one and update GARMIN_PERSONAL_API_KEY.'
-      : `Failed: ${(err as Error).message}`
-    await sql`UPDATE sync_state SET locked_until = NULL, last_finished_at = now(), last_result = ${message} WHERE id = 1`
-    throw err
+      : `Failed: ${(err as Error).message}`;
+    await sql`UPDATE sync_state SET locked_until = NULL, last_finished_at = now(), last_result = ${message} WHERE id = 1`;
+    throw err;
   }
 }
 
-async function syncUnlocked({ sql, garmin, full, deadline, log }: Required<Omit<SyncOptions, 'full'>> & { full?: boolean }) {
-  const outOfTime = () => Date.now() > deadline
+async function syncActivities({
+  sql,
+  garmin,
+  full,
+  deadline,
+  log,
+}: Required<Omit<SyncOptions, 'full'>> & { full?: boolean }) {
+  const isOutOfTime = () => Date.now() > deadline;
 
-  // 1. Activity summaries
-  const [{ latest }] = (await sql`SELECT max(start_date) AS latest FROM activities`) as [{ latest: Date | null }]
-  let startDate: string | undefined
+  const [{ latest }] =
+    (await sql`SELECT max(start_date) AS latest FROM activities`) as [
+      { latest: Date | null },
+    ];
+  let startDate: string | undefined;
   if (latest && !full) {
     // Go back a couple of days so late uploads and edits are picked up too.
-    startDate = new Date(new Date(latest).getTime() - 2 * 86_400_000).toISOString().slice(0, 10)
-    log(`Fetching activities since ${startDate}`)
+    startDate = new Date(new Date(latest).getTime() - 2 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    log(`Fetching activities since ${startDate}`);
   } else {
-    log('Fetching all activities')
+    log('Fetching all activities');
   }
 
-  let activitiesSaved = 0
+  let activitiesSaved = 0;
   for (let start = 0; ; start += PAGE_SIZE) {
-    const page = await garmin.searchActivities({ start, limit: PAGE_SIZE, startDate })
-    const rows: ActivityRow[] = []
+    const page = await garmin.searchActivities({
+      start,
+      limit: PAGE_SIZE,
+      startDate,
+    });
+    const rows: ActivityRow[] = [];
     for (const a of page) {
       try {
-        rows.push(rowFromGarmin(a))
+        rows.push(createActivityRow(a));
       } catch (err) {
-        log(`Skipping activity: ${(err as Error).message}`)
+        log(`Skipping activity: ${(err as Error).message}`);
       }
     }
-    if (rows.length) await upsert(sql, rows)
-    activitiesSaved += rows.length
-    log(`  saved ${activitiesSaved} activities`)
-    if (page.length < PAGE_SIZE || outOfTime()) break
+    if (rows.length) await upsertActivities(sql, rows);
+    activitiesSaved += rows.length;
+    log(`  saved ${activitiesSaved} activities`);
+    if (page.length < PAGE_SIZE || isOutOfTime()) break;
   }
 
-  // 2. Routes, from the original activity files
   const pending = (await sql`
     SELECT id::text FROM activities
     WHERE track_checked_at IS NULL
       AND (start_lat IS NOT NULL OR raw->>'hasPolyline' IS DISTINCT FROM 'false')
     ORDER BY start_date DESC
-  `) as Array<{ id: string }>
-  log(`Reading routes for ${pending.length} activities`)
+  `) as Array<{ id: string }>;
+  log(`Reading routes for ${pending.length} activities`);
 
-  let routesSaved = 0
-  let checked = 0
+  let routesSaved = 0;
+  let checked = 0;
   for (const { id } of pending) {
-    if (outOfTime()) break
-    checked++
+    if (isOutOfTime()) break;
+    checked++;
     try {
-      const summary = summariseTrack(await pointsFromZip(await garmin.downloadActivity(id)))
-      if (summary) routesSaved++
+      const summary = summariseTrack(
+        await readZipPoints(await garmin.downloadActivity(id)),
+      );
+      if (summary) routesSaved++;
       await sql`
         UPDATE activities SET
           summary_polyline = ${summary?.summary_polyline ?? null},
@@ -121,37 +141,55 @@ async function syncUnlocked({ sql, garmin, full, deadline, log }: Required<Omit<
           end_lng = COALESCE(end_lng, ${summary?.end_lng ?? null}),
           track_checked_at = now()
         WHERE id = ${id}
-      `
+      `;
     } catch (err) {
-      if (err instanceof GarminApiError && (err.status === 401 || err.status === 403)) throw err
+      if (
+        err instanceof GarminApiError &&
+        (err.status === 401 || err.status === 403)
+      )
+        throw err;
       // Any other 4xx means this file won't ever work (e.g. no original file); don't keep retrying it.
-      if (err instanceof GarminApiError && err.status >= 400 && err.status < 500 && err.status !== 429) {
-        await sql`UPDATE activities SET track_checked_at = now() WHERE id = ${id}`
+      if (
+        err instanceof GarminApiError &&
+        err.status >= 400 &&
+        err.status < 500 &&
+        err.status !== 429
+      ) {
+        await sql`UPDATE activities SET track_checked_at = now() WHERE id = ${id}`;
       }
-      log(`Couldn't read route for ${id}: ${(err as Error).message}`)
+      log(`Couldn't read route for ${id}: ${(err as Error).message}`);
     }
-    if (checked % 50 === 0) log(`  ${checked}/${pending.length}`)
+    if (checked % 50 === 0) log(`  ${checked}/${pending.length}`);
   }
 
-  const routesRemaining = pending.length - checked
-  const status = routesRemaining > 0 ? 'partial' : 'done'
+  const routesRemaining = pending.length - checked;
+  const status = routesRemaining > 0 ? 'partial' : 'done';
   const message =
     `Saved ${activitiesSaved} activities and ${routesSaved} routes` +
-    (routesRemaining ? `; ${routesRemaining} routes left for the next sync` : '')
-  log(message)
-  return { status, activitiesSaved, routesSaved, routesRemaining, message } satisfies SyncResult
+    (routesRemaining
+      ? `; ${routesRemaining} routes left for the next sync`
+      : '');
+  log(message);
+  return {
+    status,
+    activitiesSaved,
+    routesSaved,
+    routesRemaining,
+    message,
+  } satisfies SyncResult;
 }
 
 /**
- * A token the scheduled function sends to the background sync function so that
- * strangers can't trigger syncs. Derived from the Garmin key, so there's no
- * extra secret to set up, and the key itself never goes over the wire.
+ * Stops strangers triggering syncs. Derived from the Garmin key so there's no
+ * extra secret to set up, without sending the key itself.
  */
-export function syncToken(apiKey: string): string {
-  return createHash('sha256').update(`activity-search sync:${apiKey}`).digest('hex')
+export function createSyncToken(apiKey: string): string {
+  return createHash('sha256')
+    .update(`activity-search sync:${apiKey}`)
+    .digest('hex');
 }
 
-async function upsert(sql: Sql, rows: ActivityRow[]) {
+async function upsertActivities(sql: Sql, rows: ActivityRow[]) {
   await sql.query(
     `INSERT INTO activities (
        id, name, sport_type, description, location_name, start_date, start_date_local,
@@ -185,5 +223,5 @@ async function upsert(sql: Sql, rows: ActivityRow[]) {
        end_lng = COALESCE(EXCLUDED.end_lng, activities.end_lng),
        raw = EXCLUDED.raw, imported_at = now()`,
     [JSON.stringify(rows)],
-  )
+  );
 }

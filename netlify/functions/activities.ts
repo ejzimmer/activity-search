@@ -1,12 +1,13 @@
-import type { Config } from '@netlify/functions'
-import { getSql } from '../../lib/db.ts'
-import { parsePagination } from '../../lib/pagination.ts'
-import type { Activity, ActivitiesPage, SyncStatus } from '../../lib/types.ts'
+import type { Config } from '@netlify/functions';
+import { getSql } from '../../lib/db.ts';
+import { parsePagination } from '../../lib/pagination.ts';
+import type { Activity, ActivitiesPage, SyncStatus } from '../../lib/types.ts';
 
-/** GET /api/activities?page=1&pageSize=25 — newest first, no filtering yet. */
 export default async (req: Request): Promise<Response> => {
-  const { page, pageSize, offset } = parsePagination(new URL(req.url).searchParams)
-  const sql = getSql()
+  const { page, pageSize, offset } = parsePagination(
+    new URL(req.url).searchParams,
+  );
+  const sql = getSql();
 
   try {
     const [rows, [{ count }], [sync]] = await Promise.all([
@@ -23,8 +24,8 @@ export default async (req: Request): Promise<Response> => {
                coalesce(locked_until > now(), false) AS running
         FROM sync_state WHERE id = 1
       `,
-    ])
-    const total = count as number
+    ]);
+    const total = count as number;
     const body: ActivitiesPage = {
       activities: rows as Activity[],
       page,
@@ -32,19 +33,26 @@ export default async (req: Request): Promise<Response> => {
       total,
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
       sync: (sync as SyncStatus | undefined) ?? null,
-    }
-    return Response.json(body)
+    };
+    return Response.json(body);
   } catch (err) {
     // 42P01: the tables don't exist yet because the first sync hasn't run.
     if ((err as { code?: string }).code === '42P01') {
-      const body: ActivitiesPage = { activities: [], page, pageSize, total: 0, totalPages: 1, sync: null }
-      return Response.json(body)
+      const body: ActivitiesPage = {
+        activities: [],
+        page,
+        pageSize,
+        total: 0,
+        totalPages: 1,
+        sync: null,
+      };
+      return Response.json(body);
     }
-    throw err
+    throw err;
   }
-}
+};
 
 export const config: Config = {
   path: '/api/activities',
   method: 'GET',
-}
+};

@@ -1,54 +1,15 @@
-import { useEffect, useState } from 'react'
-import type { ActivitiesPage, SyncStatus } from '../lib/types.ts'
-import { formatDate, formatDistance, formatDuration, formatElevation, formatSportType } from './format.ts'
-
-function pageFromUrl(): number {
-  const n = Number(new URLSearchParams(window.location.search).get('page'))
-  return Number.isInteger(n) && n >= 1 ? n : 1
-}
-
-type State =
-  | { status: 'loading'; data?: ActivitiesPage }
-  | { status: 'ready'; data: ActivitiesPage }
-  | { status: 'error'; message: string; data?: ActivitiesPage }
+import { ActivitiesTable } from './ActivitiesTable.tsx';
+import { NoActivitiesMessage } from './NoActivitiesMessage.tsx';
+import { PaginationNav } from './PaginationNav.tsx';
+import { SyncNote } from './SyncNote.tsx';
+import { useActivitiesPage } from './useActivitiesPage.ts';
+import { usePageParam } from './usePageParam.ts';
 
 export function App() {
-  const [page, setPage] = useState(pageFromUrl)
-  const [state, setState] = useState<State>({ status: 'loading' })
-
-  // Keep the page in the URL so reload and the back button work.
-  useEffect(() => {
-    const onPop = () => setPage(pageFromUrl())
-    window.addEventListener('popstate', onPop)
-    return () => window.removeEventListener('popstate', onPop)
-  }, [])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    setState((s) => ({ status: 'loading', data: s.data }))
-    fetch(`/api/activities?page=${page}`, { signal: controller.signal })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`The API returned ${res.status}`)
-        return (await res.json()) as ActivitiesPage
-      })
-      .then((data) => setState({ status: 'ready', data }))
-      .catch((err: Error) => {
-        if (err.name === 'AbortError') return
-        setState((s) => ({ status: 'error', message: err.message, data: s.data }))
-      })
-    return () => controller.abort()
-  }, [page])
-
-  const goTo = (next: number) => {
-    const url = new URL(window.location.href)
-    url.searchParams.set('page', String(next))
-    window.history.pushState(null, '', url)
-    setPage(next)
-  }
-
-  const data = state.data
-  const totalPages = data?.totalPages ?? 1
-  const loading = state.status === 'loading'
+  const [page, goToPage] = usePageParam();
+  const state = useActivitiesPage(page);
+  const { data } = state;
+  const isLoading = state.status === 'loading';
 
   return (
     <main>
@@ -60,67 +21,24 @@ export function App() {
         </p>
       )}
 
-      {data && data.total === 0 ? (
-        <p>
-          No activities yet.{' '}
-          {data.sync?.running
-            ? 'The first sync from Garmin is running now. Reload in a few minutes.'
-            : 'They\'ll appear after the first sync from Garmin, which runs every hour.'}
-        </p>
+      {data?.total === 0 ? (
+        <NoActivitiesMessage isSyncRunning={data.sync?.running ?? false} />
       ) : (
-        <div className="table-wrap" aria-busy={loading}>
-          <table>
-            <caption className="visually-hidden">Your activities, newest first</caption>
-            <thead>
-              <tr>
-                <th scope="col">Date</th>
-                <th scope="col">Name</th>
-                <th scope="col">Type</th>
-                <th scope="col" className="num">Distance</th>
-                <th scope="col" className="num">Moving time</th>
-                <th scope="col" className="num">Elevation</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data?.activities.map((a) => (
-                <tr key={a.id}>
-                  <td>{formatDate(a.start_date)}</td>
-                  <th scope="row">{a.name}</th>
-                  <td>{formatSportType(a.sport_type)}</td>
-                  <td className="num">{formatDistance(a.distance_m)}</td>
-                  <td className="num">{formatDuration(a.moving_time_s)}</td>
-                  <td className="num">{formatElevation(a.elevation_gain_m)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ActivitiesTable
+          activities={data?.activities ?? []}
+          isLoading={isLoading}
+        />
       )}
 
-      <nav aria-label="Pagination" className="pagination">
-        <button type="button" onClick={() => goTo(page - 1)} disabled={page <= 1 || loading}>
-          Previous
-        </button>
-        <p aria-live="polite">
-          {data ? `Page ${page} of ${totalPages} · ${data.total} activities` : 'Loading…'}
-        </p>
-        <button type="button" onClick={() => goTo(page + 1)} disabled={page >= totalPages || loading}>
-          Next
-        </button>
-      </nav>
+      <PaginationNav
+        page={page}
+        totalPages={data?.totalPages ?? 1}
+        total={data?.total}
+        isLoading={isLoading}
+        onPageChange={goToPage}
+      />
 
       {data?.sync && <SyncNote sync={data.sync} />}
     </main>
-  )
-}
-
-function SyncNote({ sync }: { sync: SyncStatus }) {
-  if (sync.running) return <p className="sync-note">Syncing with Garmin…</p>
-  if (!sync.last_finished_at) return null
-  return (
-    <p className="sync-note">
-      Last synced with Garmin {formatDate(sync.last_finished_at)}
-      {sync.last_result ? `: ${sync.last_result}` : ''}
-    </p>
-  )
+  );
 }

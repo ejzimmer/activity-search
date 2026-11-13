@@ -1,12 +1,8 @@
-import type { Sql } from './db.ts'
+import type { Sql } from './db.ts';
 
 /**
- * The whole schema, as idempotent statements. It's applied at the start of
- * every sync, so there's no separate migration step to run.
- *
- * v1 is plain Postgres, no PostGIS yet. Start/end coordinates and the summary
- * polyline are stored now so that adding PostGIS later is a migration
- * (ADD COLUMN geom ...; UPDATE from these columns), not a re-sync.
+ * Start/end coordinates and the summary polyline are kept so PostGIS columns
+ * can be derived from them later without re-syncing from Garmin.
  */
 export const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS activities (
@@ -15,7 +11,7 @@ export const SCHEMA = [
     sport_type          TEXT,                         -- Garmin typeKey, e.g. running, cycling, hiking
     description         TEXT,
     location_name       TEXT,
-    start_date          TIMESTAMPTZ NOT NULL,         -- UTC
+    start_date          TIMESTAMPTZ NOT NULL,
     start_date_local    TIMESTAMP,                    -- wall-clock time where the activity happened
     distance_m          DOUBLE PRECISION,
     moving_time_s       INTEGER,
@@ -36,7 +32,6 @@ export const SCHEMA = [
     imported_at         TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS activities_start_date_idx ON activities (start_date DESC, id DESC)`,
-  // One row: stops two syncs overlapping, and records how the last one went.
   `CREATE TABLE IF NOT EXISTS sync_state (
     id                  INTEGER PRIMARY KEY CHECK (id = 1),
     locked_until        TIMESTAMPTZ,
@@ -45,8 +40,8 @@ export const SCHEMA = [
     last_result         TEXT
   )`,
   `INSERT INTO sync_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
-]
+];
 
 export async function ensureSchema(sql: Sql) {
-  for (const statement of SCHEMA) await sql.query(statement)
+  for (const statement of SCHEMA) await sql.query(statement);
 }
