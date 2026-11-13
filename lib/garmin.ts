@@ -181,18 +181,20 @@ export function parseGarminLocal(value: string): string {
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null)
 
-function coord(lat: unknown, lng: unknown): [number | null, number | null] {
-  const la = num(lat)
-  const ln = num(lng)
-  if (la === null || ln === null || (la === 0 && ln === 0)) return [null, null]
-  return [la, ln]
+/** Garmin reports 0,0 for activities without GPS, so treat that as no location. */
+function coordinates(rawLatitude: unknown, rawLongitude: unknown): [number | null, number | null] {
+  const latitude = num(rawLatitude)
+  const longitude = num(rawLongitude)
+  if (latitude === null || longitude === null) return [null, null]
+  if (latitude === 0 && longitude === 0) return [null, null]
+  return [latitude, longitude]
 }
 
 export function rowFromGarmin(a: GarminActivity): ActivityRow {
   if (!a.activityId) throw new Error('Activity has no activityId')
   if (!a.startTimeGMT) throw new Error(`Activity ${a.activityId} has no startTimeGMT`)
-  const [start_lat, start_lng] = coord(a.startLatitude, a.startLongitude)
-  const [end_lat, end_lng] = coord(a.endLatitude, a.endLongitude)
+  const [start_lat, start_lng] = coordinates(a.startLatitude, a.startLongitude)
+  const [end_lat, end_lng] = coordinates(a.endLatitude, a.endLongitude)
   const local = text(a.startTimeLocal)
   return {
     id: String(a.activityId),

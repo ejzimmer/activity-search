@@ -20,13 +20,14 @@ function asArray<T>(v: T | T[] | undefined): T[] {
   return v === undefined ? [] : Array.isArray(v) ? v : [v]
 }
 
-function validPoint(lat: unknown, lng: unknown): LatLng | null {
-  const la = Number(lat)
-  const ln = Number(lng)
-  if (!Number.isFinite(la) || !Number.isFinite(ln)) return null
-  if (la === 0 && ln === 0) return null
-  if (Math.abs(la) > 90 || Math.abs(ln) > 180) return null
-  return [la, ln]
+/** Turns raw values from a file into a point, dropping missing, 0,0 and out-of-range ones. */
+function validPoint(rawLatitude: unknown, rawLongitude: unknown): LatLng | null {
+  const latitude = Number(rawLatitude)
+  const longitude = Number(rawLongitude)
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null
+  if (latitude === 0 && longitude === 0) return null
+  if (Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return null
+  return [latitude, longitude]
 }
 
 export function pointsFromGpx(text: string): LatLng[] {
