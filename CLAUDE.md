@@ -8,7 +8,7 @@ Setup and anything erin has to do must be possible in a browser (GitHub, Netlify
 
 ## Node and Temporal
 
-Netlify runs Node 22, which doesn't ship `Temporal`, so date-time code imports it from `temporal-polyfill`. Use Temporal rather than `Date` for parsing and arithmetic.
+The project runs on the Node version in `.nvmrc` (also pinned in `package.json` engines), which has `Temporal` built in. Use Temporal rather than `Date` or hand-rolled parsing for dates and times. Containers for Claude Code on the web start on an older Node, where code using Temporal fails with `Temporal is not defined`; `.claude/hooks/session-start.sh` installs and selects the pinned version at session start. If that failure shows up, check `node -v` first.
 
 ## Checks
 

@@ -6,8 +6,6 @@
  * https://github.com/garmin/connect-personal-api-python.
  */
 
-import { Temporal } from 'temporal-polyfill';
-
 export const DEFAULT_BASE_URL = 'https://personal.connectapi.garmin.com';
 const TOKEN_PATH =
   '/personalapitoken-service/personal-api/personal-api-key/token';
@@ -35,7 +33,7 @@ export interface GarminClientOptions {
 const sleepFor = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class GarminClient {
-  private token: { value: string; expiresAt: number } | null = null;
+  private token: { value: string; expiresAt: Temporal.Instant } | null = null;
   private readonly baseUrl: string;
   private readonly delayMs: number;
   private readonly fetch: typeof fetch;
@@ -48,7 +46,11 @@ export class GarminClient {
 
   /** Swaps the personal API key for a bearer token (valid up to 24h; there are no refresh tokens). */
   private async getAccessToken(): Promise<string> {
-    if (this.token && this.token.expiresAt - Date.now() > 5 * 60_000)
+    const refreshAfter = Temporal.Now.instant().add({ minutes: 5 });
+    if (
+      this.token &&
+      Temporal.Instant.compare(this.token.expiresAt, refreshAfter) > 0
+    )
       return this.token.value;
     const url = `${this.baseUrl}${TOKEN_PATH}`;
     const res = await this.fetch(url, {
@@ -62,7 +64,8 @@ export class GarminClient {
     const value = (await res.text()).trim();
     this.token = {
       value,
-      expiresAt: readJwtExpiry(value) ?? Date.now() + 60 * 60_000,
+      expiresAt:
+        readJwtExpiry(value) ?? Temporal.Now.instant().add({ hours: 1 }),
     };
     return value;
   }
@@ -134,12 +137,14 @@ export class GarminClient {
   }
 }
 
-function readJwtExpiry(token: string): number | null {
+function readJwtExpiry(token: string): Temporal.Instant | null {
   try {
     const payload = JSON.parse(
       Buffer.from(token.split('.')[1], 'base64url').toString('utf8'),
     );
-    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
+    return typeof payload.exp === 'number'
+      ? Temporal.Instant.fromEpochMilliseconds(payload.exp * 1000)
+      : null;
   } catch {
     return null;
   }

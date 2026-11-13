@@ -15,8 +15,8 @@ export interface SyncOptions {
   sql: Sql;
   garmin: GarminClient;
   full?: boolean;
-  /** Epoch ms after which the run stops starting new work. */
-  deadline?: number;
+  /** After this, the run stops starting new work. */
+  deadline?: Temporal.Instant;
   log?: (message: string) => void;
 }
 
@@ -32,9 +32,9 @@ export async function runSync(opts: SyncOptions): Promise<SyncResult> {
   const { sql, log = console.log } = opts;
   await ensureSchema(sql);
 
-  const deadline = opts.deadline ?? Infinity;
-  const lockMinutes = Number.isFinite(deadline)
-    ? Math.ceil((deadline - Date.now()) / 60_000) + 2
+  const lockMinutes = opts.deadline
+    ? Math.ceil(opts.deadline.since(Temporal.Now.instant()).total('minutes')) +
+      2
     : 24 * 60;
   const claimed = await sql.query(
     `UPDATE sync_state SET locked_until = now() + make_interval(mins => $1), last_started_at = now()
@@ -54,7 +54,7 @@ export async function runSync(opts: SyncOptions): Promise<SyncResult> {
   }
 
   try {
-    const result = await syncActivities({ ...opts, deadline, log });
+    const result = await syncActivities({ ...opts, log });
     await sql`UPDATE sync_state SET locked_until = NULL, last_finished_at = now(), last_result = ${result.message} WHERE id = 1`;
     return result;
   } catch (err) {
@@ -75,19 +75,21 @@ async function syncActivities({
   full,
   deadline,
   log,
-}: Required<Omit<SyncOptions, 'full'>> & { full?: boolean }) {
-  const isOutOfTime = () => Date.now() > deadline;
+}: SyncOptions & { log: (message: string) => void }) {
+  const isOutOfTime = () =>
+    deadline !== undefined &&
+    Temporal.Instant.compare(Temporal.Now.instant(), deadline) > 0;
 
-  const [{ latest }] =
-    (await sql`SELECT max(start_date) AS latest FROM activities`) as [
-      { latest: Date | null },
-    ];
+  const [{ latestDay }] = (await sql`
+    SELECT to_char(max(start_date) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS "latestDay"
+    FROM activities
+  `) as [{ latestDay: string | null }];
   let startDate: string | undefined;
-  if (latest && !full) {
+  if (latestDay && !full) {
     // Go back a couple of days so late uploads and edits are picked up too.
-    startDate = new Date(new Date(latest).getTime() - 2 * 86_400_000)
-      .toISOString()
-      .slice(0, 10);
+    startDate = Temporal.PlainDate.from(latestDay)
+      .subtract({ days: 2 })
+      .toString();
     log(`Fetching activities since ${startDate}`);
   } else {
     log('Fetching all activities');

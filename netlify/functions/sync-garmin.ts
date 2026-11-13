@@ -19,7 +19,7 @@ export default async (req: Request): Promise<void> => {
     garmin: new GarminClient({ apiKey }),
     full: new URL(req.url).searchParams.get('full') === '1',
     // Leave a margin under the 15-minute background function limit.
-    deadline: Date.now() + 12 * 60_000,
+    deadline: Temporal.Now.instant().add({ minutes: 12 }),
   });
 };
 

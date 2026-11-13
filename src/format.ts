@@ -18,12 +18,11 @@ export function formatElevation(metres: number | null): string {
   return `${Math.round(metres)} m`;
 }
 
-const dateFormat = new Intl.DateTimeFormat(undefined, {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
 export function formatDate(iso: string): string {
-  return dateFormat.format(new Date(iso));
+  return Temporal.Instant.from(iso).toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
 }
 
 /** Garmin type keys look like "trail_running"; show them as "Trail running". */
