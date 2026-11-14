@@ -9,8 +9,8 @@ export interface Pagination {
 
 function parsePositiveInt(value: string | null, fallback: number): number {
   if (value === null || !/^\d+$/.test(value)) return fallback;
-  const n = Number(value);
-  return n >= 1 ? n : fallback;
+  const parsed = Number(value);
+  return parsed >= 1 ? parsed : fallback;
 }
 
 export function parsePagination(params: URLSearchParams): Pagination {

@@ -2,6 +2,10 @@
 
 Activity search: a personal app that syncs erin's activities from the Garmin Connect Personal API into Neon Postgres and shows them in a paginated table. Hosted on Netlify (functions in `netlify/functions/`, shared code in `lib/`, React front end in `src/`).
 
+## Coding standards
+
+These rules match erin's `coding-standards` skill. Follow the spirit of each rule, not just its wording, and before every push work through the checklist at the end of this file against the diff.
+
 ## erin works without a terminal
 
 Setup and anything erin has to do must be possible in a browser (GitHub, Netlify, Neon, Garmin Connect). Don't hand over steps that need a console. Work that needs to run somewhere runs on Netlify (the hourly `sync-schedule` function starts the `sync-garmin` background function).
@@ -31,6 +35,12 @@ Write code that reads on its own - name things well, keep functions small - and 
 ## Function names describe what the function does
 
 A function name should describe what the function does. As such, it should include both a verb and a noun - `createItem`, NOT `item`. If a function name uses the verb "resolve" because it does multiple things, it's probably a bad function.
+
+A verb and a noun are the minimum, not the test. The name has to tell a reader what this specific function does without opening it: `syncWithGarmin`, not `runSync`; `connectToDatabase`, not `getSql`. Generic verbs (`run`, `get`, `handle`, `process`, `do`) and generic nouns (`data`, `item`, `result`, `info`, `sql`) need a reason. The same goes for variables and parameters: no `a`, `v`, `la`, `res`, `opts`, `p` outside a one-line callback.
+
+## No default exports unless something requires them
+
+Use named exports. Only use a default export when a framework or tool requires it (here, Netlify functions). Even then, give the function a name: `export default async function getActivitiesPage(...)`, not `export default async (...) =>`.
 
 ## One component per file
 
@@ -85,3 +95,26 @@ Write a PR description if it's useful, but don't expect erin to read it. Anythin
 ## No placeholder text in form fields
 
 Never use placeholder text in form fields (the greyed-out text inside an empty input). It disappears the moment the user types, is invisible to screen readers by default, and gets mistaken for a filled-in value. Use a `<label>`, help text below the field, or a tooltip instead.
+
+## Target browsers
+
+Nothing needs to run on Safari. Don't add polyfills, fallbacks or workarounds for it.
+
+## CSS lives with its component
+
+Each component imports its own CSS file, kept next to it (`ActivitiesTable.tsx` and `ActivitiesTable.css`). Scope its selectors to the component (`.pagination button`, not `button`). `src/index.css` only holds design tokens, `body`, and genuinely global utilities such as `.visually-hidden`.
+
+## Before every push: check the diff against these rules
+
+Read through the whole diff (`git diff` against the base branch) with this list open, and fix anything it turns up before pushing. Don't skip it for small changes.
+
+1. **Names.** Every new or renamed function, variable and parameter: does the name alone tell a reader what it does or holds? Verb + specific noun for functions. No single letters or abbreviations outside one-line callbacks.
+2. **Comments.** Every new comment: would a reader be unable to work this out from the code? Cut anything that restates the code, labels a section, or only makes sense to someone who saw an earlier version.
+3. **Exports.** `grep -n 'export default'` on the diff: each one must be required by a framework, and must be a named function.
+4. **Components.** One component per file with its own props type. Any component file doing several jobs gets split.
+5. **CSS.** New styles sit in the component's own CSS file, with scoped selectors.
+6. **Dates.** `grep -n 'Date'` on the diff: no `new Date`, `Date.now`, `Date.UTC` or date regexes; use Temporal. Types for dates and times are Temporal types, not strings, past the JSON boundary.
+7. **Tests.** Nested describes that read as sentences; no negative assertions with nothing to trigger them; no `queryBy` absence checks.
+8. **UI.** No placeholder text; no Safari workarounds.
+9. **Visible changes.** Screenshots taken and shown in chat.
+10. **Checks.** `npm test`, `npm run typecheck` and `npm run format` all pass.

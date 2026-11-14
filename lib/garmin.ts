@@ -30,7 +30,8 @@ export interface GarminClientOptions {
   fetch?: typeof fetch;
 }
 
-const sleepFor = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const sleepFor = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
 
 export class GarminClient {
   private token: { value: string; expiresAt: Temporal.Instant } | null = null;
@@ -53,15 +54,16 @@ export class GarminClient {
     )
       return this.token.value;
     const url = `${this.baseUrl}${TOKEN_PATH}`;
-    const res = await this.fetch(url, {
+    const response = await this.fetch(url, {
       method: 'POST',
       headers: {
         Accept: '*/*',
         Authorization: `ApiKey ${this.options.apiKey}`,
       },
     });
-    if (!res.ok) throw new GarminApiError(res.status, url, await res.text());
-    const value = (await res.text()).trim();
+    if (!response.ok)
+      throw new GarminApiError(response.status, url, await response.text());
+    const value = (await response.text()).trim();
     this.token = {
       value,
       expiresAt:
@@ -76,20 +78,20 @@ export class GarminClient {
     accept = 'application/json',
   ) {
     const url = new URL(`${this.baseUrl}${path}`);
-    for (const [k, v] of Object.entries(params))
-      url.searchParams.set(k, String(v));
+    for (const [name, value] of Object.entries(params))
+      url.searchParams.set(name, String(value));
 
     for (let attempt = 0; ; attempt++) {
       if (this.delayMs) await sleepFor(this.delayMs);
-      const res = await this.fetch(url, {
+      const response = await this.fetch(url, {
         headers: {
           Accept: accept,
           Authorization: `Bearer ${await this.getAccessToken()}`,
         },
       });
-      if (res.ok) return res;
-      if ((res.status === 429 || res.status >= 500) && attempt < 4) {
-        const retryAfter = Number(res.headers.get('retry-after'));
+      if (response.ok) return response;
+      if ((response.status === 429 || response.status >= 500) && attempt < 4) {
+        const retryAfter = Number(response.headers.get('retry-after'));
         await sleepFor(
           Number.isFinite(retryAfter) && retryAfter > 0
             ? retryAfter * 1000
@@ -97,13 +99,17 @@ export class GarminClient {
         );
         continue;
       }
-      throw new GarminApiError(res.status, url.toString(), await res.text());
+      throw new GarminApiError(
+        response.status,
+        url.toString(),
+        await response.text(),
+      );
     }
   }
 
   /** Garmin returns newest first. Dates are calendar dates, YYYY-MM-DD. */
   async searchActivities(
-    opts: {
+    options: {
       start?: number;
       limit?: number;
       startDate?: string;
@@ -111,16 +117,16 @@ export class GarminClient {
     } = {},
   ) {
     const params: Record<string, string | number> = {
-      start: opts.start ?? 0,
-      limit: opts.limit ?? 100,
+      start: options.start ?? 0,
+      limit: options.limit ?? 100,
     };
-    if (opts.startDate) params.startDate = opts.startDate;
-    if (opts.endDate) params.endDate = opts.endDate;
-    const res = await this.getResponse(
+    if (options.startDate) params.startDate = options.startDate;
+    if (options.endDate) params.endDate = options.endDate;
+    const response = await this.getResponse(
       '/activitylist-service/activities/search/activities',
       params,
     );
-    const text = await res.text();
+    const text = await response.text();
     return (text ? JSON.parse(text) : []) as GarminActivity[];
   }
 
@@ -128,12 +134,12 @@ export class GarminClient {
   async downloadActivity(activityId: string | number): Promise<Uint8Array> {
     const id = String(activityId);
     if (!/^[1-9]\d*$/.test(id)) throw new Error(`Invalid activity id: ${id}`);
-    const res = await this.getResponse(
+    const response = await this.getResponse(
       `/download-service/files/activity/${id}`,
       {},
       'application/zip, application/x-zip-compressed, application/octet-stream',
     );
-    return new Uint8Array(await res.arrayBuffer());
+    return new Uint8Array(await response.arrayBuffer());
   }
 }
 
@@ -219,10 +225,10 @@ export function parseGarminLocal(value: string): string {
   return parseGarminDateTime(value).toString();
 }
 
-const readFiniteNumber = (v: unknown): number | null =>
-  typeof v === 'number' && Number.isFinite(v) ? v : null;
-const readTrimmedText = (v: unknown): string | null =>
-  typeof v === 'string' && v.trim() ? v.trim() : null;
+const readFiniteNumber = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null;
+const readTrimmedText = (value: unknown): string | null =>
+  typeof value === 'string' && value.trim() ? value.trim() : null;
 
 /** Garmin reports 0,0 for activities without GPS, so treat that as no location. */
 function parseCoordinates(
@@ -236,44 +242,48 @@ function parseCoordinates(
   return [latitude, longitude];
 }
 
-export function createActivityRow(a: GarminActivity): ActivityRow {
-  if (!a.activityId) throw new Error('Activity has no activityId');
-  if (!a.startTimeGMT)
-    throw new Error(`Activity ${a.activityId} has no startTimeGMT`);
+export function createActivityRow(activity: GarminActivity): ActivityRow {
+  if (!activity.activityId) throw new Error('Activity has no activityId');
+  if (!activity.startTimeGMT)
+    throw new Error(`Activity ${activity.activityId} has no startTimeGMT`);
   const [start_lat, start_lng] = parseCoordinates(
-    a.startLatitude,
-    a.startLongitude,
+    activity.startLatitude,
+    activity.startLongitude,
   );
-  const [end_lat, end_lng] = parseCoordinates(a.endLatitude, a.endLongitude);
-  const local = readTrimmedText(a.startTimeLocal);
+  const [end_lat, end_lng] = parseCoordinates(
+    activity.endLatitude,
+    activity.endLongitude,
+  );
+  const local = readTrimmedText(activity.startTimeLocal);
   return {
-    id: String(a.activityId),
-    name: readTrimmedText(a.activityName) ?? 'Untitled activity',
-    sport_type: readTrimmedText(a.activityType?.typeKey),
-    description: readTrimmedText(a.description),
-    location_name: readTrimmedText(a.locationName),
-    start_date: parseGarminGmt(a.startTimeGMT),
+    id: String(activity.activityId),
+    name: readTrimmedText(activity.activityName) ?? 'Untitled activity',
+    sport_type: readTrimmedText(activity.activityType?.typeKey),
+    description: readTrimmedText(activity.description),
+    location_name: readTrimmedText(activity.locationName),
+    start_date: parseGarminGmt(activity.startTimeGMT),
     start_date_local: local ? parseGarminLocal(local) : null,
-    distance_m: readFiniteNumber(a.distance),
+    distance_m: readFiniteNumber(activity.distance),
     moving_time_s:
-      readFiniteNumber(a.movingDuration) === null
+      readFiniteNumber(activity.movingDuration) === null
         ? null
-        : Math.round(a.movingDuration!),
+        : Math.round(activity.movingDuration!),
     elapsed_time_s: (() => {
-      const v =
-        readFiniteNumber(a.elapsedDuration) ?? readFiniteNumber(a.duration);
-      return v === null ? null : Math.round(v);
+      const seconds =
+        readFiniteNumber(activity.elapsedDuration) ??
+        readFiniteNumber(activity.duration);
+      return seconds === null ? null : Math.round(seconds);
     })(),
-    elevation_gain_m: readFiniteNumber(a.elevationGain),
-    average_speed_mps: readFiniteNumber(a.averageSpeed),
-    max_speed_mps: readFiniteNumber(a.maxSpeed),
-    average_heartrate: readFiniteNumber(a.averageHR),
-    max_heartrate: readFiniteNumber(a.maxHR),
-    calories: readFiniteNumber(a.calories),
+    elevation_gain_m: readFiniteNumber(activity.elevationGain),
+    average_speed_mps: readFiniteNumber(activity.averageSpeed),
+    max_speed_mps: readFiniteNumber(activity.maxSpeed),
+    average_heartrate: readFiniteNumber(activity.averageHR),
+    max_heartrate: readFiniteNumber(activity.maxHR),
+    calories: readFiniteNumber(activity.calories),
     start_lat,
     start_lng,
     end_lat,
     end_lng,
-    raw: a,
+    raw: activity,
   };
 }

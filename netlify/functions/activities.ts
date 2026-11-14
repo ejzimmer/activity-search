@@ -8,10 +8,10 @@ import type {
 } from '../../lib/types.ts';
 
 export default async function getActivitiesPage(
-  req: Request,
+  request: Request,
 ): Promise<Response> {
   const { page, pageSize, offset } = parsePagination(
-    new URL(req.url).searchParams,
+    new URL(request.url).searchParams,
   );
   const sql = connectToDatabase();
 
@@ -41,9 +41,9 @@ export default async function getActivitiesPage(
       sync: (sync as SyncStatusResponse | undefined) ?? null,
     };
     return Response.json(body);
-  } catch (err) {
+  } catch (error) {
     // 42P01: the tables don't exist yet because the first sync hasn't run.
-    if ((err as { code?: string }).code === '42P01') {
+    if ((error as { code?: string }).code === '42P01') {
       const body: ActivitiesPageResponse = {
         activities: [],
         page,
@@ -54,7 +54,7 @@ export default async function getActivitiesPage(
       };
       return Response.json(body);
     }
-    throw err;
+    throw error;
   }
 }
 

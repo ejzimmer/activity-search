@@ -8,12 +8,12 @@ export default async function startHourlySync(): Promise<Response> {
     console.error('GARMIN_PERSONAL_API_KEY or URL is not set; not syncing');
     return new Response(null, { status: 500 });
   }
-  const res = await fetch(`${siteUrl}/api/sync`, {
+  const response = await fetch(`${siteUrl}/api/sync`, {
     method: 'POST',
     headers: { 'x-sync-token': createSyncToken(apiKey) },
   });
-  console.log(`Started sync: ${res.status}`);
-  return new Response(null, { status: res.ok ? 202 : 502 });
+  console.log(`Started sync: ${response.status}`);
+  return new Response(null, { status: response.ok ? 202 : 502 });
 }
 
 export const config: Config = {

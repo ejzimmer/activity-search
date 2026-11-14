@@ -28,13 +28,16 @@ export interface SyncResult {
   message: string;
 }
 
-export async function syncWithGarmin(opts: SyncOptions): Promise<SyncResult> {
-  const { sql, log = console.log } = opts;
+export async function syncWithGarmin(
+  options: SyncOptions,
+): Promise<SyncResult> {
+  const { sql, log = console.log } = options;
   await ensureSchema(sql);
 
-  const lockMinutes = opts.deadline
-    ? Math.ceil(opts.deadline.since(Temporal.Now.instant()).total('minutes')) +
-      2
+  const lockMinutes = options.deadline
+    ? Math.ceil(
+        options.deadline.since(Temporal.Now.instant()).total('minutes'),
+      ) + 2
     : 24 * 60;
   const claimed = await sql.query(
     `UPDATE sync_state SET locked_until = now() + make_interval(mins => $1), last_started_at = now()
@@ -54,18 +57,18 @@ export async function syncWithGarmin(opts: SyncOptions): Promise<SyncResult> {
   }
 
   try {
-    const result = await syncActivities({ ...opts, log });
+    const result = await syncActivities({ ...options, log });
     await sql`UPDATE sync_state SET locked_until = NULL, last_finished_at = now(), last_result = ${result.message} WHERE id = 1`;
     return result;
-  } catch (err) {
+  } catch (error) {
     const keyRejected =
-      err instanceof GarminApiError &&
-      (err.status === 401 || err.status === 403);
+      error instanceof GarminApiError &&
+      (error.status === 401 || error.status === 403);
     const message = keyRejected
       ? 'Failed: Garmin rejected the API key. It may have expired; create a new one and update GARMIN_PERSONAL_API_KEY.'
-      : `Failed: ${(err as Error).message}`;
+      : `Failed: ${(error as Error).message}`;
     await sql`UPDATE sync_state SET locked_until = NULL, last_finished_at = now(), last_result = ${message} WHERE id = 1`;
-    throw err;
+    throw error;
   }
 }
 
@@ -103,11 +106,11 @@ async function syncActivities({
       startDate,
     });
     const rows: ActivityRow[] = [];
-    for (const a of page) {
+    for (const garminActivity of page) {
       try {
-        rows.push(createActivityRow(a));
-      } catch (err) {
-        log(`Skipping activity: ${(err as Error).message}`);
+        rows.push(createActivityRow(garminActivity));
+      } catch (error) {
+        log(`Skipping activity: ${(error as Error).message}`);
       }
     }
     if (rows.length) await upsertActivities(sql, rows);
@@ -144,22 +147,22 @@ async function syncActivities({
           track_checked_at = now()
         WHERE id = ${id}
       `;
-    } catch (err) {
+    } catch (error) {
       if (
-        err instanceof GarminApiError &&
-        (err.status === 401 || err.status === 403)
+        error instanceof GarminApiError &&
+        (error.status === 401 || error.status === 403)
       )
-        throw err;
+        throw error;
       // Any other 4xx means this file won't ever work (e.g. no original file); don't keep retrying it.
       if (
-        err instanceof GarminApiError &&
-        err.status >= 400 &&
-        err.status < 500 &&
-        err.status !== 429
+        error instanceof GarminApiError &&
+        error.status >= 400 &&
+        error.status < 500 &&
+        error.status !== 429
       ) {
         await sql`UPDATE activities SET track_checked_at = now() WHERE id = ${id}`;
       }
-      log(`Couldn't read route for ${id}: ${(err as Error).message}`);
+      log(`Couldn't read route for ${id}: ${(error as Error).message}`);
     }
     if (checked % 50 === 0) log(`  ${checked}/${pending.length}`);
   }

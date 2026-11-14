@@ -20,8 +20,8 @@ const xml = new XMLParser({
   removeNSPrefix: true,
 });
 
-function wrapInArray<T>(v: T | T[] | undefined): T[] {
-  return v === undefined ? [] : Array.isArray(v) ? v : [v];
+function wrapInArray<T>(value: T | T[] | undefined): T[] {
+  return value === undefined ? [] : Array.isArray(value) ? value : [value];
 }
 
 function parsePoint(
@@ -37,13 +37,13 @@ function parsePoint(
 }
 
 export function readGpxPoints(text: string): LatLng[] {
-  const doc = xml.parse(text);
+  const parsedXml = xml.parse(text);
   const points: LatLng[] = [];
-  for (const trk of wrapInArray(doc?.gpx?.trk)) {
-    for (const seg of wrapInArray(trk?.trkseg)) {
-      for (const pt of wrapInArray(seg?.trkpt)) {
-        const p = parsePoint(pt?.lat, pt?.lon);
-        if (p) points.push(p);
+  for (const track of wrapInArray(parsedXml?.gpx?.trk)) {
+    for (const segment of wrapInArray(track?.trkseg)) {
+      for (const trackPoint of wrapInArray(segment?.trkpt)) {
+        const point = parsePoint(trackPoint?.lat, trackPoint?.lon);
+        if (point) points.push(point);
       }
     }
   }
@@ -51,19 +51,19 @@ export function readGpxPoints(text: string): LatLng[] {
 }
 
 export function readTcxPoints(text: string): LatLng[] {
-  const doc = xml.parse(text.trimStart()); // some TCX files have leading whitespace
+  const parsedXml = xml.parse(text.trimStart()); // some TCX files have leading whitespace
   const points: LatLng[] = [];
-  for (const act of wrapInArray(
-    doc?.TrainingCenterDatabase?.Activities?.Activity,
+  for (const activity of wrapInArray(
+    parsedXml?.TrainingCenterDatabase?.Activities?.Activity,
   )) {
-    for (const lap of wrapInArray(act?.Lap)) {
+    for (const lap of wrapInArray(activity?.Lap)) {
       for (const track of wrapInArray(lap?.Track)) {
-        for (const tp of wrapInArray(track?.Trackpoint)) {
-          const p = parsePoint(
-            tp?.Position?.LatitudeDegrees,
-            tp?.Position?.LongitudeDegrees,
+        for (const trackPoint of wrapInArray(track?.Trackpoint)) {
+          const point = parsePoint(
+            trackPoint?.Position?.LatitudeDegrees,
+            trackPoint?.Position?.LongitudeDegrees,
           );
-          if (p) points.push(p);
+          if (point) points.push(point);
         }
       }
     }
@@ -77,10 +77,10 @@ export async function readFitPoints(
   const parser = new FitParser({ force: true, mode: 'list' });
   const data = await parser.parseAsync(buffer);
   const points: LatLng[] = [];
-  for (const r of (data as { records?: Array<Record<string, unknown>> })
+  for (const record of (data as { records?: Array<Record<string, unknown>> })
     .records ?? []) {
-    const p = parsePoint(r.position_lat, r.position_long);
-    if (p) points.push(p);
+    const point = parsePoint(record.position_lat, record.position_long);
+    if (point) points.push(point);
   }
   return points;
 }
@@ -90,15 +90,17 @@ export async function readFilePoints(
   contents: Buffer,
 ): Promise<LatLng[]> {
   let name = filename.toLowerCase();
-  let buf = contents as Buffer<ArrayBuffer>;
+  let fileContents = contents as Buffer<ArrayBuffer>;
   if (name.endsWith('.gz')) {
-    buf = gunzipSync(buf) as Buffer<ArrayBuffer>;
+    fileContents = gunzipSync(fileContents) as Buffer<ArrayBuffer>;
     name = name.slice(0, -3);
   }
-  if (name.endsWith('.gpx')) return readGpxPoints(buf.toString('utf8'));
-  if (name.endsWith('.tcx')) return readTcxPoints(buf.toString('utf8'));
-  if (name.endsWith('.fit')) return readFitPoints(buf);
-  if (name.endsWith('.zip')) return readZipPoints(buf);
+  if (name.endsWith('.gpx'))
+    return readGpxPoints(fileContents.toString('utf8'));
+  if (name.endsWith('.tcx'))
+    return readTcxPoints(fileContents.toString('utf8'));
+  if (name.endsWith('.fit')) return readFitPoints(fileContents);
+  if (name.endsWith('.zip')) return readZipPoints(fileContents);
   return [];
 }
 
@@ -119,10 +121,14 @@ export async function readZipPoints(contents: Uint8Array): Promise<LatLng[]> {
   return [];
 }
 
-function measurePerpendicularDistance(p: LatLng, a: LatLng, b: LatLng): number {
-  const [x, y] = p;
-  const [x1, y1] = a;
-  const [x2, y2] = b;
+function measurePerpendicularDistance(
+  point: LatLng,
+  lineStart: LatLng,
+  lineEnd: LatLng,
+): number {
+  const [x, y] = point;
+  const [x1, y1] = lineStart;
+  const [x2, y2] = lineEnd;
   const dx = x2 - x1;
   const dy = y2 - y1;
   if (dx === 0 && dy === 0) return Math.hypot(x - x1, y - y1);
@@ -141,20 +147,20 @@ export function simplifyTrack(points: LatLng[], tolerance: number): LatLng[] {
   const stack: Array<[number, number]> = [[0, points.length - 1]];
   while (stack.length) {
     const [start, end] = stack.pop()!;
-    let maxDist = 0;
+    let maxDistance = 0;
     let index = -1;
     for (let i = start + 1; i < end; i++) {
-      const d = measurePerpendicularDistance(
+      const distance = measurePerpendicularDistance(
         points[i],
         points[start],
         points[end],
       );
-      if (d > maxDist) {
-        maxDist = d;
+      if (distance > maxDistance) {
+        maxDistance = distance;
         index = i;
       }
     }
-    if (index !== -1 && maxDist > tolerance) {
+    if (index !== -1 && maxDistance > tolerance) {
       keep[index] = 1;
       stack.push([start, index], [index, end]);
     }
