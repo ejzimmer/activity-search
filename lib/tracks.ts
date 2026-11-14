@@ -139,7 +139,13 @@ function measurePerpendicularDistance(
   return Math.hypot(x - (x1 + t * dx), y - (y1 + t * dy));
 }
 
-/** Ramer–Douglas–Peucker, iterative so long tracks can't blow the stack. */
+/**
+ * Drops points that sit within `tolerance` of a straight line between the
+ * points kept either side of them, so a track keeps its shape with far fewer
+ * points (the Ramer–Douglas–Peucker algorithm). It's usually written
+ * recursively; this uses a stack instead so a track with tens of thousands of
+ * points can't overflow the call stack.
+ */
 export function simplifyTrack(points: LatLng[], tolerance: number): LatLng[] {
   if (points.length <= 2) return points;
   const keep = new Uint8Array(points.length);

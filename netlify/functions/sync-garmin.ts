@@ -11,6 +11,9 @@ export default async function syncGarminInBackground(
     console.error('GARMIN_PERSONAL_API_KEY is not set');
     return;
   }
+  // /api/sync is a public URL. Only something that can read
+  // GARMIN_PERSONAL_API_KEY (the schedule function) can work out this token,
+  // and the hash can't be turned back into the key.
   if (request.headers.get('x-sync-token') !== createSyncToken(apiKey)) {
     console.warn('Ignoring sync request without a valid token');
     return;

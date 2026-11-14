@@ -184,10 +184,6 @@ async function syncActivities({
   } satisfies SyncResult;
 }
 
-/**
- * Stops strangers triggering syncs. Derived from the Garmin key so there's no
- * extra secret to set up, without sending the key itself.
- */
 export function createSyncToken(apiKey: string): string {
   return createHash('sha256')
     .update(`activity-search sync:${apiKey}`)
