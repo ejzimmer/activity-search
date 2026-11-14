@@ -2,7 +2,8 @@ node_modules
 dist
 .env
 .netlify
-# Strava exports contain personal data; keep them out of git
-strava-export*/
-export_*/
+# Activity exports contain personal data; keep them out of git
+*.fit
+*.gpx
+*.tcx
 *.zip
