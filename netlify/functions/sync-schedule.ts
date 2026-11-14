@@ -14,8 +14,7 @@ export default async function startDailySync(): Promise<Response> {
 }
 
 // Garmin's Personal API can't notify us of new activities, so they only arrive
-// by asking. Netlify schedules are in UTC: 09:00 UTC is 7pm in Sydney in
-// winter and 8pm in summer.
+// by asking.
 export const config: Config = {
-  schedule: '0 9 * * *',
+  schedule: '@daily',
 };
