@@ -7,7 +7,7 @@ them in a paginated table.
 - **Front end:** React + Vite (`src/`)
 - **API:** a Netlify Function at `GET /api/activities?page=1&pageSize=25` (`netlify/functions/activities.ts`)
 - **Data source:** the [Garmin Connect Personal API](https://developer.garmin.com/gc-developer-program/personal/personal-faq/).
-  Netlify syncs every hour (`netlify/functions/sync-schedule.ts` starts
+  Netlify syncs every evening (`netlify/functions/sync-schedule.ts` starts
   `netlify/functions/sync-garmin.ts`, which does the work in `lib/sync.ts`).
 - **Database:** Neon Postgres in Sydney, plain tables for now (`lib/schema.ts`). The
   tables are created automatically by the first sync. Start/end coordinates and a
@@ -45,13 +45,13 @@ Pick the longest expiry you're comfortable with (up to a year). The key is shown
 
 ### 4. Run the first sync
 
-Syncs run every hour on their own. To start one now, go to **Logs → Functions →
-sync-schedule** and click **Run now**.
+A sync runs every evening (7pm Sydney time in winter, 8pm in summer). To start one
+now, go to **Logs → Functions → sync-schedule** and click **Run now**.
 
 The first sync fetches every activity, then downloads each one's original file
-(usually FIT) to get the route. Each run stops after about 12 minutes and the next
-one carries on, so a long history fills in over a few hours. The bottom of the page
-shows when the last sync finished and what it did. Activities with no GPS
+(usually FIT) to get the route. Each run stops after about 12 minutes and starts the
+next one straight away, so a long history fills in without waiting for the next
+evening. The bottom of the page shows when the last sync finished and what it did. Activities with no GPS
 (treadmill, gym) are stored without coordinates.
 
 If the page says Garmin rejected the key, it has expired: create a new one and

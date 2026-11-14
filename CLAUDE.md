@@ -8,7 +8,7 @@ These rules match erin's `coding-standards` skill. Follow the spirit of each rul
 
 ## erin works without a terminal
 
-Setup and anything erin has to do must be possible in a browser (GitHub, Netlify, Neon, Garmin Connect). Don't hand over steps that need a console. Work that needs to run somewhere runs on Netlify (the hourly `sync-schedule` function starts the `sync-garmin` background function).
+Setup and anything erin has to do must be possible in a browser (GitHub, Netlify, Neon, Garmin Connect). Don't hand over steps that need a console. Work that needs to run somewhere runs on Netlify (the daily `sync-schedule` function starts the `sync-garmin` background function).
 
 ## Node and Temporal
 

@@ -10,7 +10,7 @@ export function NoActivitiesMessage({
       No activities yet.{' '}
       {isSyncRunning
         ? 'The first sync from Garmin is running now. Reload in a few minutes.'
-        : "They'll appear after the first sync from Garmin, which runs every hour."}
+        : "They'll appear after the first sync from Garmin, which runs every evening."}
     </p>
   );
 }

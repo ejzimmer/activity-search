@@ -190,6 +190,16 @@ export function createSyncToken(apiKey: string): string {
     .digest('hex');
 }
 
+export function startBackgroundSync(
+  siteUrl: string,
+  apiKey: string,
+): Promise<Response> {
+  return fetch(`${siteUrl}/api/sync`, {
+    method: 'POST',
+    headers: { 'x-sync-token': createSyncToken(apiKey) },
+  });
+}
+
 async function upsertActivities(sql: Sql, rows: ActivityRow[]) {
   await sql.query(
     `INSERT INTO activities (
