@@ -16,6 +16,9 @@ export default async function startHourlySync(): Promise<Response> {
   return new Response(null, { status: response.ok ? 202 : 502 });
 }
 
+// Garmin's Personal API can't notify us of new activities, so they only arrive
+// by asking. Each run is also capped at 12 minutes, so the first sync of a
+// long history finishes over several runs.
 export const config: Config = {
   schedule: '@hourly',
 };
