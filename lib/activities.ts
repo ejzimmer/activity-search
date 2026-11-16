@@ -1,15 +1,12 @@
-import type { Config } from '@netlify/functions';
-import { connectToDatabase } from '../../lib/db.ts';
-import { parsePagination } from '../../lib/pagination.ts';
+import { connectToDatabase } from './db.ts';
+import { parsePagination } from './pagination.ts';
 import type {
   ActivitiesPageResponse,
   ActivityResponse,
   SyncStatusResponse,
-} from '../../lib/types.ts';
+} from './types.ts';
 
-export default async function getActivitiesPage(
-  request: Request,
-): Promise<Response> {
+export async function getActivitiesPage(request: Request): Promise<Response> {
   const { page, pageSize, offset } = parsePagination(
     new URL(request.url).searchParams,
   );
@@ -57,8 +54,3 @@ export default async function getActivitiesPage(
     throw error;
   }
 }
-
-export const config: Config = {
-  path: '/api/activities',
-  method: 'GET',
-};

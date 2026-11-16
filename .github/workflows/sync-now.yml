@@ -1,0 +1,23 @@
+name: Sync now
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ vars.NEON_FUNCTIONS_PROJECT_ID }}
+      GARMIN_PERSONAL_API_KEY: ${{ secrets.GARMIN_PERSONAL_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Start a sync
+        run: |
+          url=$(npx neon functions get api --project-id "$NEON_PROJECT_ID" --output json | jq -r '.invocation_url // .[0].invocation_url')
+          npx tsx scripts/start-sync.ts "$url"

@@ -2,6 +2,7 @@ node_modules
 dist
 .env
 .netlify
+.neon
 # Activity exports contain personal data; keep them out of git
 *.fit
 *.gpx
