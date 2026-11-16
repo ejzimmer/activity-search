@@ -1,0 +1,32 @@
+name: Deploy functions
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency: deploy-functions
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ vars.NEON_FUNCTIONS_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Deploy to Neon
+        run: npx neon deploy --project-id "$NEON_PROJECT_ID" --yes --no-env-pull
+        env:
+          ACTIVITIES_DATABASE_URL: ${{ secrets.ACTIVITIES_DATABASE_URL }}
+          GARMIN_PERSONAL_API_KEY: ${{ secrets.GARMIN_PERSONAL_API_KEY }}
+      - name: Show the API's URL
+        run: |
+          url=$(npx neon functions get api --project-id "$NEON_PROJECT_ID" --output json | jq -r '.invocation_url // .[0].invocation_url')
+          echo "API URL: $url" | tee -a "$GITHUB_STEP_SUMMARY"

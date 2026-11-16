@@ -191,10 +191,10 @@ export function createSyncToken(apiKey: string): string {
 }
 
 export function startBackgroundSync(
-  siteUrl: string,
+  apiUrl: string,
   apiKey: string,
 ): Promise<Response> {
-  return fetch(`${siteUrl}/api/sync`, {
+  return fetch(`${apiUrl}/sync`, {
     method: 'POST',
     headers: { 'x-sync-token': createSyncToken(apiKey) },
   });

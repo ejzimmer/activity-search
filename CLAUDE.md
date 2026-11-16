@@ -1,6 +1,6 @@
 # Project notes for Claude
 
-Activity search: a personal app that syncs erin's activities from the Garmin Connect Personal API into Neon Postgres and shows them in a paginated table. Hosted on Netlify (functions in `netlify/functions/`, shared code in `lib/`, React front end in `src/`).
+Activity search: a personal app that syncs erin's activities from the Garmin Connect Personal API into Neon Postgres and shows them in a paginated table. The React front end (`src/`) is hosted on Netlify. The API and the sync are one Neon Function (`functions/api.ts`, configured in `neon.ts`, shared code in `lib/`) in a Neon project in Singapore, because Neon Functions don't run in Sydney. The database is a separate Neon project in Sydney (`ACTIVITIES_DATABASE_URL`). GitHub Actions deploys the function on every push to `main`.
 
 ## Coding standards
 
@@ -8,11 +8,13 @@ These rules match erin's `coding-standards` skill. Follow the spirit of each rul
 
 ## erin works without a terminal
 
-Setup and anything erin has to do must be possible in a browser (GitHub, Netlify, Neon, Garmin Connect). Don't hand over steps that need a console. Work that needs to run somewhere runs on Netlify (the daily `sync-schedule` function starts the `sync-garmin` background function).
+Setup and anything erin has to do must be possible in a browser (GitHub, Netlify, Neon, Garmin Connect). Don't hand over steps that need a console. Work that needs to run somewhere runs on Neon (a daily schedule trigger calls `POST /sync`) or in GitHub Actions (deploys, and the "Sync now" workflow). Secrets go in the repo's GitHub Actions secrets, which erin can set in the browser.
 
 ## Node and Temporal
 
 The project runs on the Node version in `.nvmrc` (also pinned in `package.json` engines), which has `Temporal` built in. Use Temporal rather than `Date` or hand-rolled parsing for dates and times. Containers for Claude Code on the web start on an older Node, where code using Temporal fails with `Temporal is not defined`; `.claude/hooks/session-start.sh` installs and selects the pinned version at session start. If that failure shows up, check `node -v` first.
+
+The one exception is the deployed Neon Function: Neon only offers Node 24, which has no Temporal, so `functions/api.ts` imports `temporal-polyfill/global`. Keep the polyfill to that entry point, and remove it once Neon offers a Node version with Temporal.
 
 ## Checks
 
@@ -40,7 +42,7 @@ A verb and a noun are the minimum, not the test. The name has to tell a reader w
 
 ## No default exports unless something requires them
 
-Use named exports. Only use a default export when a framework or tool requires it (here, Netlify functions). Even then, give the function a name: `export default async function getActivitiesPage(...)`, not `export default async (...) =>`.
+Use named exports. Only use a default export when a framework or tool requires it (here, the Neon Function entry point and config files such as `neon.ts` and `vite.config.ts`). Even then, give the function a name: `export default async function getActivitiesPage(...)`, not `export default async (...) =>`.
 
 ## One component per file
 

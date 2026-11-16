@@ -13,5 +13,13 @@
     "isolatedModules": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["src", "lib", "scripts", "netlify", "tests", "vite.config.ts"]
+  "include": [
+    "src",
+    "lib",
+    "functions",
+    "scripts",
+    "tests",
+    "neon.ts",
+    "vite.config.ts"
+  ]
 }
