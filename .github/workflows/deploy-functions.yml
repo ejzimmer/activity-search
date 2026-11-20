@@ -21,6 +21,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Create database tables
+        run: npx tsx scripts/create-tables.ts
+        env:
+          ACTIVITIES_DATABASE_URL: ${{ secrets.ACTIVITIES_DATABASE_URL }}
       - name: Deploy to Neon
         run: npx neon deploy --project-id "$NEON_PROJECT_ID" --yes --no-env-pull
         env:

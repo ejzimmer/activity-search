@@ -4,6 +4,7 @@
 
 .activities-map .leaflet-container {
   height: 24rem;
+  cursor: crosshair;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
 }
@@ -21,4 +22,11 @@
 
 .activities-map .route-casing {
   stroke: var(--route-casing);
+}
+
+.activities-map .nearby-area {
+  stroke: var(--route-selected);
+  stroke-width: 2;
+  fill: var(--route-selected);
+  fill-opacity: 0.15;
 }

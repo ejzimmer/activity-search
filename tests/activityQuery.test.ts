@@ -1,19 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   createApiSearchParams,
+  createNearFilterValues,
   hasActiveFilters,
+  NO_FILTERS,
   readActivityQuery,
   writeActivityQuery,
   type FilterValues,
 } from '../src/activityQuery.ts';
-
-const NO_FILTERS: FilterValues = {
-  sportType: '',
-  name: '',
-  distanceKm: '',
-  hours: '',
-  minutes: '',
-};
 
 const createQuery = (filters: Partial<FilterValues>) => ({
   page: 1,
@@ -40,6 +34,8 @@ describe('readActivityQuery', () => {
           distanceKm: '20',
           hours: '2',
           minutes: '',
+          nearLat: '-37.81000',
+          nearLng: '144.96000',
         },
       };
       const url = new URL('https://example.com/');
@@ -84,6 +80,26 @@ describe('createApiSearchParams', () => {
         createApiSearchParams(createQuery({ name: '  park ' })).get('name'),
       ).toBe('park');
     });
+  });
+
+  describe('with a point to be near', () => {
+    it('sends its latitude and longitude', () => {
+      const params = createApiSearchParams(
+        createQuery(createNearFilterValues({ lat: -37.8136, lng: 144.9631 })),
+      );
+      expect([params.get('lat'), params.get('lng')]).toEqual([
+        '-37.8136',
+        '144.9631',
+      ]);
+    });
+  });
+});
+
+describe('createNearFilterValues', () => {
+  it('rounds the point to five decimal places', () => {
+    expect(
+      createNearFilterValues({ lat: -37.813628, lng: 144.963058 }),
+    ).toEqual({ nearLat: '-37.81363', nearLng: '144.96306' });
   });
 });
 

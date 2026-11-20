@@ -1,3 +1,4 @@
+import { parseCoordinates, type Coordinates } from './coordinates.ts';
 import { listSportTypesWithin } from './sport-types.ts';
 
 export const DISTANCE_TOLERANCE = { under: 0.1, over: 0.1 };
@@ -13,6 +14,7 @@ export interface ActivityFilters {
   namePattern: string | null;
   distanceRange: Range | null;
   movingTimeRange: Range | null;
+  nearPoint: Coordinates | null;
 }
 
 function readTrimmedParam(params: URLSearchParams, name: string) {
@@ -55,5 +57,6 @@ export function parseActivityFilters(params: URLSearchParams): ActivityFilters {
       readPositiveNumberParam(params, 'duration'),
       MOVING_TIME_TOLERANCE,
     ),
+    nearPoint: parseCoordinates(params.get('lat'), params.get('lng')),
   };
 }

@@ -12,6 +12,7 @@ describe('parseActivityFilters', () => {
         namePattern: null,
         distanceRange: null,
         movingTimeRange: null,
+        nearPoint: null,
       });
     });
   });
@@ -62,13 +63,37 @@ describe('parseActivityFilters', () => {
     });
   });
 
+  describe('with a latitude and longitude', () => {
+    it('matches near that point', () => {
+      expect(parseQuery('lat=-37.81&lng=144.96').nearPoint).toEqual({
+        lat: -37.81,
+        lng: 144.96,
+      });
+    });
+
+    describe('that are out of range', () => {
+      it('ignores them', () => {
+        expect(parseQuery('lat=91&lng=144.96').nearPoint).toBeNull();
+      });
+    });
+
+    describe('when only one is given', () => {
+      it('ignores it', () => {
+        expect(parseQuery('lat=-37.81').nearPoint).toBeNull();
+      });
+    });
+  });
+
   describe('with blank, zero or non-numeric values', () => {
     it('ignores them', () => {
-      expect(parseQuery('type=%20&name=&distance=abc&duration=0')).toEqual({
+      expect(
+        parseQuery('type=%20&name=&distance=abc&duration=0&lat=&lng=x'),
+      ).toEqual({
         sportTypes: null,
         namePattern: null,
         distanceRange: null,
         movingTimeRange: null,
+        nearPoint: null,
       });
     });
   });

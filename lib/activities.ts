@@ -1,3 +1,4 @@
+import { NEAR_RADIUS_M, type Coordinates } from './coordinates.ts';
 import { connectToDatabase, type Sql } from './db.ts';
 import { parseActivityFilters, type ActivityFilters } from './filters.ts';
 import { parsePagination } from './pagination.ts';
@@ -8,9 +9,48 @@ import type {
   SyncStatusResponse,
 } from './types.ts';
 
+const EARTH_RADIUS_M = 6371008.8;
+
+type SqlFragment = ReturnType<Sql>;
+
+function calculateHaversineMetres(
+  sql: Sql,
+  { lat, lng }: Coordinates,
+  latColumn: SqlFragment,
+  lngColumn: SqlFragment,
+) {
+  return sql`2 * ${EARTH_RADIUS_M}::float8 * asin(sqrt(
+    power(sin(radians(${latColumn} - ${lat}::float8) / 2), 2)
+    + cos(radians(${lat}::float8)) * cos(radians(${latColumn}))
+      * power(sin(radians(${lngColumn} - ${lng}::float8) / 2), 2)
+  ))`;
+}
+
+function createStartsOrEndsNearCondition(sql: Sql, point: Coordinates) {
+  const startDistance = calculateHaversineMetres(
+    sql,
+    point,
+    sql`start_lat`,
+    sql`start_lng`,
+  );
+  const endDistance = calculateHaversineMetres(
+    sql,
+    point,
+    sql`end_lat`,
+    sql`end_lng`,
+  );
+  return sql`(${startDistance} <= ${NEAR_RADIUS_M} OR ${endDistance} <= ${NEAR_RADIUS_M})`;
+}
+
 function createFilterCondition(
   sql: Sql,
-  { sportTypes, namePattern, distanceRange, movingTimeRange }: ActivityFilters,
+  {
+    sportTypes,
+    namePattern,
+    distanceRange,
+    movingTimeRange,
+    nearPoint,
+  }: ActivityFilters,
 ) {
   const conditions = [sql`TRUE`];
   if (sportTypes) conditions.push(sql`sport_type = ANY(${sportTypes})`);
@@ -25,6 +65,8 @@ function createFilterCondition(
     conditions.push(
       sql`moving_time_s BETWEEN ${movingTimeRange.min}::float8 AND ${movingTimeRange.max}::float8`,
     );
+  if (nearPoint)
+    conditions.push(createStartsOrEndsNearCondition(sql, nearPoint));
   return conditions.reduce(
     (combined, condition) => sql`${combined} AND ${condition}`,
   );

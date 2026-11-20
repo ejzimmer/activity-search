@@ -2,18 +2,25 @@ import './App.css';
 import { useState } from 'react';
 import { ActivitiesMap } from './ActivitiesMap.tsx';
 import { ActivitiesTable } from './ActivitiesTable.tsx';
-import { hasActiveFilters } from './activityQuery.ts';
+import {
+  createNearFilterValues,
+  hasActiveFilters,
+  readNearPoint,
+} from './activityQuery.ts';
 import { ActivityFilters } from './ActivityFilters.tsx';
 import { NoActivitiesMessage } from './NoActivitiesMessage.tsx';
 import { PaginationNav } from './PaginationNav.tsx';
 import { SyncNote } from './SyncNote.tsx';
 import { useActivitiesPage } from './useActivitiesPage.ts';
 import { useActivityQuery } from './useActivityQuery.ts';
+import { useFavouriteLocations } from './useFavouriteLocations.ts';
 
 export function App() {
   const { query, goToPage, changeFilters } = useActivityQuery();
   const state = useActivitiesPage(query);
   const { data } = state;
+  const { favourites, errorMessage, addFavourite, removeFavourite } =
+    useFavouriteLocations();
   const isLoading = state.status === 'loading';
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(
     null,
@@ -38,6 +45,13 @@ export function App() {
           activities={data.activities}
           selectedActivityId={selectedActivityId}
           onSelectActivity={toggleSelectedActivity}
+          nearPoint={readNearPoint(query.filters)}
+          onPickPoint={(point) =>
+            changeFilters({
+              ...query.filters,
+              ...createNearFilterValues(point),
+            })
+          }
         />
       )}
 
@@ -45,7 +59,16 @@ export function App() {
         filters={query.filters}
         sportTypeOptions={data?.sportTypes ?? []}
         onChange={changeFilters}
+        favourites={favourites}
+        onAddFavourite={addFavourite}
+        onRemoveFavourite={removeFavourite}
       />
+
+      {errorMessage && (
+        <p role="alert" className="error">
+          {errorMessage}
+        </p>
+      )}
 
       {data?.total === 0 ? (
         <NoActivitiesMessage

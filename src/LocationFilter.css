@@ -1,0 +1,70 @@
+.location-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.location-filter-box {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 1rem;
+  color: var(--fg);
+  background: var(--bg);
+  padding: 0.25rem 0.25rem 0.25rem 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.375rem;
+}
+
+.location-filter-box > svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.location-filter-name {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.location-filter-box button,
+.save-favourite-form button {
+  display: flex;
+  padding: 0.25rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.save-favourite-form button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.save-favourite-form {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.save-favourite-form input {
+  width: 9rem;
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  padding: 0 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.25rem;
+}
+
+.location-filter-box button:focus-visible,
+.save-favourite-form input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
