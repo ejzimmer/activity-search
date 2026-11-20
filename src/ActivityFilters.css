@@ -1,0 +1,65 @@
+.activity-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.activity-filters label {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.activity-filters > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.activity-filters .unit-input {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.activity-filters > label input,
+.activity-filters select {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+}
+
+.activity-filters input[type='search'] {
+  width: 12rem;
+}
+
+.activity-filters input[type='number'] {
+  width: 4.5rem;
+}
+
+.activity-filters .clear-filters {
+  display: flex;
+  padding: 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.375rem;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.activity-filters .clear-filters:disabled {
+  border-color: var(--border);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.activity-filters > label input:focus-visible,
+.activity-filters select:focus-visible,
+.activity-filters .clear-filters:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

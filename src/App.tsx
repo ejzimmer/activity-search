@@ -2,15 +2,17 @@ import './App.css';
 import { useState } from 'react';
 import { ActivitiesMap } from './ActivitiesMap.tsx';
 import { ActivitiesTable } from './ActivitiesTable.tsx';
+import { hasActiveFilters } from './activityQuery.ts';
+import { ActivityFilters } from './ActivityFilters.tsx';
 import { NoActivitiesMessage } from './NoActivitiesMessage.tsx';
 import { PaginationNav } from './PaginationNav.tsx';
 import { SyncNote } from './SyncNote.tsx';
 import { useActivitiesPage } from './useActivitiesPage.ts';
-import { usePageParam } from './usePageParam.ts';
+import { useActivityQuery } from './useActivityQuery.ts';
 
 export function App() {
-  const [page, goToPage] = usePageParam();
-  const state = useActivitiesPage(page);
+  const { query, goToPage, changeFilters } = useActivityQuery();
+  const state = useActivitiesPage(query);
   const { data } = state;
   const isLoading = state.status === 'loading';
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(
@@ -39,8 +41,17 @@ export function App() {
         />
       )}
 
+      <ActivityFilters
+        filters={query.filters}
+        sportTypeOptions={data?.sportTypes ?? []}
+        onChange={changeFilters}
+      />
+
       {data?.total === 0 ? (
-        <NoActivitiesMessage isSyncRunning={data.sync?.running ?? false} />
+        <NoActivitiesMessage
+          isFiltered={hasActiveFilters(query)}
+          isSyncRunning={data.sync?.running ?? false}
+        />
       ) : (
         <ActivitiesTable
           activities={data?.activities ?? []}
@@ -51,7 +62,7 @@ export function App() {
       )}
 
       <PaginationNav
-        page={page}
+        page={query.page}
         totalPages={data?.totalPages ?? 1}
         total={data?.total}
         isLoading={isLoading}
