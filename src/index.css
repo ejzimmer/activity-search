@@ -5,6 +5,7 @@
   --border: #e7e5e4;
   --stripe: #f5f5f4;
   --accent: #c2410c;
+  --route: #a21caf;
   --error: #b91c1c;
   color-scheme: light dark;
   font-family:
@@ -23,6 +24,7 @@
     --border: #44403c;
     --stripe: #292524;
     --accent: #fb923c;
+    --route: #e879f9;
     --error: #f87171;
   }
 }

@@ -45,7 +45,13 @@ export function ActivitiesMap({
 
   return (
     <section className="activities-map" aria-label="Map of routes">
-      <MapContainer center={[0, 0]} zoom={2} scrollWheelZoom={false}>
+      <MapContainer
+        center={[0, 0]}
+        zoom={2}
+        // Fractional zoom lets fitting the routes fill the map instead of
+        // stopping at the next whole zoom level out.
+        zoomSnap={0.25}
+      >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
