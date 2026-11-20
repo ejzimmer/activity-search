@@ -1,0 +1,18 @@
+.activity-name {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.activity-name:hover,
+.activity-name[aria-pressed='true'] {
+  color: var(--accent);
+  text-decoration-color: currentColor;
+}

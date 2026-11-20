@@ -1,4 +1,6 @@
 import './App.css';
+import { useState } from 'react';
+import { ActivitiesMap } from './ActivitiesMap.tsx';
 import { ActivitiesTable } from './ActivitiesTable.tsx';
 import { NoActivitiesMessage } from './NoActivitiesMessage.tsx';
 import { PaginationNav } from './PaginationNav.tsx';
@@ -11,6 +13,13 @@ export function App() {
   const state = useActivitiesPage(page);
   const { data } = state;
   const isLoading = state.status === 'loading';
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(
+    null,
+  );
+  const toggleSelectedActivity = (activityId: string) =>
+    setSelectedActivityId((currentId) =>
+      currentId === activityId ? null : activityId,
+    );
 
   return (
     <main>
@@ -22,12 +31,22 @@ export function App() {
         </p>
       )}
 
+      {data && (
+        <ActivitiesMap
+          activities={data.activities}
+          selectedActivityId={selectedActivityId}
+          onSelectActivity={toggleSelectedActivity}
+        />
+      )}
+
       {data?.total === 0 ? (
         <NoActivitiesMessage isSyncRunning={data.sync?.running ?? false} />
       ) : (
         <ActivitiesTable
           activities={data?.activities ?? []}
           isLoading={isLoading}
+          selectedActivityId={selectedActivityId}
+          onSelectActivity={toggleSelectedActivity}
         />
       )}
 

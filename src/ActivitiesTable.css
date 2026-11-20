@@ -38,3 +38,7 @@ tbody tr:nth-child(even) {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+.table-wrap tbody tr.selected {
+  box-shadow: inset 3px 0 0 var(--accent);
+}

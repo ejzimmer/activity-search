@@ -1,0 +1,19 @@
+.activities-map {
+  margin-bottom: 1.5rem;
+}
+
+.activities-map .leaflet-container {
+  height: 24rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+.activities-map .route-line {
+  stroke: var(--muted);
+  stroke-opacity: 0.7;
+}
+
+.activities-map .route-line.selected {
+  stroke: var(--accent);
+  stroke-opacity: 1;
+}
