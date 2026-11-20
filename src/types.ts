@@ -4,8 +4,14 @@ import type {
   SyncStatusResponse,
 } from '../lib/types.ts';
 
-export type Activity = Omit<ActivityResponse, 'start_date'> & {
+export type LatLng = [latitude: number, longitude: number];
+
+export type Activity = Omit<
+  ActivityResponse,
+  'start_date' | 'summary_polyline'
+> & {
   start_date: Temporal.Instant;
+  route: LatLng[] | null;
 };
 
 export type SyncStatus = Omit<

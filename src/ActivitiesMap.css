@@ -1,0 +1,20 @@
+.activities-map {
+  margin-bottom: 1.5rem;
+}
+
+.activities-map .leaflet-container {
+  height: 24rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+}
+
+/* Overlapping routes add up, so often-used paths show darker, like a heat map. */
+.activities-map .route-line {
+  stroke: var(--accent);
+  stroke-opacity: 0.3;
+}
+
+.activities-map .route-line.selected {
+  stroke: var(--accent);
+  stroke-opacity: 1;
+}

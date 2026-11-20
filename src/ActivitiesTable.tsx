@@ -1,4 +1,5 @@
 import './ActivitiesTable.css';
+import { ActivityName } from './ActivityName.tsx';
 import type { Activity } from './types.ts';
 import {
   formatDate,
@@ -11,11 +12,15 @@ import {
 type ActivitiesTableProps = {
   activities: Activity[];
   isLoading: boolean;
+  selectedActivityId: string | null;
+  onSelectActivity: (activityId: string) => void;
 };
 
 export function ActivitiesTable({
   activities,
   isLoading,
+  selectedActivityId,
+  onSelectActivity,
 }: ActivitiesTableProps) {
   return (
     <div className="table-wrap" aria-busy={isLoading}>
@@ -41,9 +46,20 @@ export function ActivitiesTable({
         </thead>
         <tbody>
           {activities.map((activity) => (
-            <tr key={activity.id}>
+            <tr
+              key={activity.id}
+              className={
+                activity.id === selectedActivityId ? 'selected' : undefined
+              }
+            >
               <td>{formatDate(activity.start_date)}</td>
-              <th scope="row">{activity.name}</th>
+              <th scope="row">
+                <ActivityName
+                  activity={activity}
+                  isSelected={activity.id === selectedActivityId}
+                  onSelect={onSelectActivity}
+                />
+              </th>
               <td>{formatSportType(activity.sport_type)}</td>
               <td className="num">{formatDistance(activity.distance_m)}</td>
               <td className="num">{formatDuration(activity.moving_time_s)}</td>
