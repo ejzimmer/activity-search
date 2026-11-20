@@ -15,6 +15,10 @@
 }
 
 .activities-map .route-line.selected {
-  stroke: var(--route);
+  stroke: var(--route-selected);
   stroke-opacity: 1;
+}
+
+.activities-map .route-casing {
+  stroke: var(--route-casing);
 }

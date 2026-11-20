@@ -10,11 +10,12 @@ const route: [number, number][] = [
 
 function createActivityResponse(
   summaryPolyline: string | null,
+  sportType: string,
 ): ActivityResponse {
   return {
     id: '1',
     name: 'Morning run',
-    sport_type: 'running',
+    sport_type: sportType,
     start_date: '2026-11-20T00:30:00Z',
     distance_m: 5000,
     moving_time_s: 1500,
@@ -26,9 +27,12 @@ function createActivityResponse(
   };
 }
 
-function parseOneActivity(summaryPolyline: string | null) {
+function parseOneActivity(
+  summaryPolyline: string | null,
+  sportType = 'running',
+) {
   const page = parseActivitiesPage({
-    activities: [createActivityResponse(summaryPolyline)],
+    activities: [createActivityResponse(summaryPolyline, sportType)],
     page: 1,
     pageSize: 25,
     total: 1,
@@ -51,6 +55,14 @@ describe('parseActivitiesPage', () => {
     describe('when it has a route', () => {
       it('decodes the polyline into latitude and longitude pairs', () => {
         expect(parseOneActivity(polyline.encode(route)).route).toEqual(route);
+      });
+    });
+
+    describe('when it is virtual', () => {
+      it('has a null route, since its GPS is from a game world', () => {
+        expect(
+          parseOneActivity(polyline.encode(route), 'virtual_ride').route,
+        ).toBeNull();
       });
     });
 

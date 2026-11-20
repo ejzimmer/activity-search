@@ -16,15 +16,25 @@ export function RouteLine({
   onSelect,
 }: RouteLineProps) {
   return (
-    <Polyline
-      positions={route}
-      className={isSelected ? 'route-line selected' : 'route-line'}
-      pathOptions={{ weight: isSelected ? 5 : 3 }}
-      eventHandlers={{ click: () => onSelect(activity.id) }}
-    >
-      <Tooltip sticky>
-        {activity.name}, {formatDate(activity.start_date)}
-      </Tooltip>
-    </Polyline>
+    <>
+      {isSelected && (
+        <Polyline
+          positions={route}
+          className="route-casing"
+          pathOptions={{ weight: 9 }}
+          interactive={false}
+        />
+      )}
+      <Polyline
+        positions={route}
+        className={isSelected ? 'route-line selected' : 'route-line'}
+        pathOptions={{ weight: isSelected ? 5 : 3 }}
+        eventHandlers={{ click: () => onSelect(activity.id) }}
+      >
+        <Tooltip sticky>
+          {activity.name}, {formatDate(activity.start_date)}
+        </Tooltip>
+      </Polyline>
+    </>
   );
 }
