@@ -57,8 +57,8 @@ In this repo on GitHub, go to **Settings → Secrets and variables → Actions**
 ### 5. Deploy the function
 
 Go to **Actions → Deploy functions → Run workflow**. When it finishes, the run's
-summary shows the API's URL. `netlify.toml` needs that URL so Netlify can pass `/api`
-requests on to it.
+summary shows the API's URL. If it differs from the one in `netlify.toml` (which
+happens only if the Singapore project is replaced), update `netlify.toml` to match.
 
 After this, every push to `main` deploys again on its own.
 
