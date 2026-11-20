@@ -48,8 +48,9 @@ export function ActivitiesMap({
       <MapContainer
         center={[0, 0]}
         zoom={2}
-        // Fractional zoom lets fitting the routes fill the map instead of
-        // stopping at the next whole zoom level out.
+        // Leaflet only zooms in whole levels by default, and each level is
+        // twice the scale of the last. Fitting the routes then often leaves
+        // them filling barely half the map, so allow quarter levels.
         zoomSnap={0.25}
       >
         <TileLayer
