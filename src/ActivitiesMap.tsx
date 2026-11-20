@@ -45,7 +45,14 @@ export function ActivitiesMap({
 
   return (
     <section className="activities-map" aria-label="Map of routes">
-      <MapContainer center={[0, 0]} zoom={2} scrollWheelZoom={false}>
+      <MapContainer
+        center={[0, 0]}
+        zoom={2}
+        // Leaflet only zooms in whole levels by default, and each level is
+        // twice the scale of the last. Fitting the routes then often leaves
+        // them filling barely half the map, so allow quarter levels.
+        zoomSnap={0.25}
+      >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"

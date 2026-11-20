@@ -11,7 +11,7 @@ export function FitMapToRoutes({ routes }: FitMapToRoutesProps) {
 
   useEffect(() => {
     const points = routes.flat();
-    if (points.length > 0) map.fitBounds(points, { padding: [24, 24] });
+    if (points.length > 0) map.fitBounds(points, { padding: [8, 8] });
   }, [map, routes]);
 
   return null;

@@ -10,11 +10,11 @@
 
 /* Overlapping routes add up, so often-used paths show darker, like a heat map. */
 .activities-map .route-line {
-  stroke: var(--accent);
-  stroke-opacity: 0.3;
+  stroke: var(--route);
+  stroke-opacity: 0.4;
 }
 
 .activities-map .route-line.selected {
-  stroke: var(--accent);
+  stroke: var(--route);
   stroke-opacity: 1;
 }
