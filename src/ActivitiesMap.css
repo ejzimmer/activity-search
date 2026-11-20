@@ -8,9 +8,10 @@
   border-radius: 0.5rem;
 }
 
+/* Overlapping routes add up, so often-used paths show darker, like a heat map. */
 .activities-map .route-line {
-  stroke: var(--muted);
-  stroke-opacity: 0.7;
+  stroke: var(--accent);
+  stroke-opacity: 0.3;
 }
 
 .activities-map .route-line.selected {
