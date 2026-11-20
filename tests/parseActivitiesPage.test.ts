@@ -37,6 +37,7 @@ function parseOneActivity(
     pageSize: 25,
     total: 1,
     totalPages: 1,
+    sportTypes: [],
     sync: null,
   });
   return page.activities[0];

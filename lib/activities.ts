@@ -1,27 +1,56 @@
-import { connectToDatabase } from './db.ts';
+import { connectToDatabase, type Sql } from './db.ts';
+import { parseActivityFilters, type ActivityFilters } from './filters.ts';
 import { parsePagination } from './pagination.ts';
+import { listSportTypeOptions } from './sport-types.ts';
 import type {
   ActivitiesPageResponse,
   ActivityResponse,
   SyncStatusResponse,
 } from './types.ts';
 
-export async function getActivitiesPage(request: Request): Promise<Response> {
-  const { page, pageSize, offset } = parsePagination(
-    new URL(request.url).searchParams,
+function createFilterCondition(
+  sql: Sql,
+  { sportTypes, namePattern, distanceRange, movingTimeRange }: ActivityFilters,
+) {
+  const conditions = [sql`TRUE`];
+  if (sportTypes) conditions.push(sql`sport_type = ANY(${sportTypes})`);
+  if (namePattern) conditions.push(sql`name ILIKE ${namePattern}`);
+  if (distanceRange)
+    conditions.push(
+      sql`distance_m BETWEEN ${distanceRange.min} AND ${distanceRange.max}`,
+    );
+  // moving_time_s is an integer column, so Postgres would read uncast
+  // fractional bounds as integers and reject them.
+  if (movingTimeRange)
+    conditions.push(
+      sql`moving_time_s BETWEEN ${movingTimeRange.min}::float8 AND ${movingTimeRange.max}::float8`,
+    );
+  return conditions.reduce(
+    (combined, condition) => sql`${combined} AND ${condition}`,
   );
+}
+
+export async function getActivitiesPage(request: Request): Promise<Response> {
+  const searchParams = new URL(request.url).searchParams;
+  const { page, pageSize, offset } = parsePagination(searchParams);
   const sql = connectToDatabase();
+  const filterCondition = createFilterCondition(
+    sql,
+    parseActivityFilters(searchParams),
+  );
 
   try {
-    const [rows, [{ count }], [sync]] = await Promise.all([
+    const [rows, [{ count }], sportTypeRows, [sync]] = await Promise.all([
       sql`
         SELECT id::text, name, sport_type, start_date, distance_m, moving_time_s, elapsed_time_s,
                elevation_gain_m, start_lat, start_lng, summary_polyline
         FROM activities
+        WHERE ${filterCondition}
         ORDER BY start_date DESC, id DESC
         LIMIT ${pageSize} OFFSET ${offset}
       `,
-      sql`SELECT count(*)::int AS count FROM activities`,
+      sql`SELECT count(*)::int AS count FROM activities WHERE ${filterCondition}`,
+      sql`SELECT DISTINCT sport_type FROM activities WHERE sport_type IS NOT NULL`,
       sql`
         SELECT last_started_at, last_finished_at, last_result,
                coalesce(locked_until > now(), false) AS running
@@ -35,6 +64,9 @@ export async function getActivitiesPage(request: Request): Promise<Response> {
       pageSize,
       total,
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      sportTypes: listSportTypeOptions(
+        sportTypeRows.map((row) => row.sport_type as string),
+      ),
       sync: (sync as SyncStatusResponse | undefined) ?? null,
     };
     return Response.json(body);
@@ -47,6 +79,7 @@ export async function getActivitiesPage(request: Request): Promise<Response> {
         pageSize,
         total: 0,
         totalPages: 1,
+        sportTypes: [],
         sync: null,
       };
       return Response.json(body);

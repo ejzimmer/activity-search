@@ -1,3 +1,5 @@
+import type { SportTypeOption } from './sport-types.ts';
+
 /** The JSON the API sends. Dates and times are ISO 8601 instants, since JSON has no date type. */
 export interface ActivityResponse {
   id: string; // BIGINT comes back as a string; keep it that way to avoid precision loss
@@ -26,5 +28,6 @@ export interface ActivitiesPageResponse {
   pageSize: number;
   total: number;
   totalPages: number;
+  sportTypes: SportTypeOption[];
   sync: SyncStatusResponse | null;
 }

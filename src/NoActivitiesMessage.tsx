@@ -1,10 +1,13 @@
 type NoActivitiesMessageProps = {
+  isFiltered: boolean;
   isSyncRunning: boolean;
 };
 
 export function NoActivitiesMessage({
+  isFiltered,
   isSyncRunning,
 }: NoActivitiesMessageProps) {
+  if (isFiltered) return <p>No matching activities.</p>;
   return (
     <p>
       No activities yet.{' '}
