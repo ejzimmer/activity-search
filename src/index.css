@@ -5,7 +5,10 @@
   --border: #e7e5e4;
   --stripe: #f5f5f4;
   --accent: #c2410c;
-  --route: #a21caf;
+  /* Routes sit on light map tiles in both themes, so these have no dark variants. */
+  --route: #4f46e5;
+  --route-selected: #f97316;
+  --route-casing: #1c1917;
   --error: #b91c1c;
   color-scheme: light dark;
   font-family:
@@ -24,7 +27,6 @@
     --border: #44403c;
     --stripe: #292524;
     --accent: #fb923c;
-    --route: #e879f9;
     --error: #f87171;
   }
 }
