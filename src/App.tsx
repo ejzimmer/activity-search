@@ -33,12 +33,6 @@ export function App() {
         </p>
       )}
 
-      <ActivityFilters
-        filters={query.filters}
-        sportTypeOptions={data?.sportTypes ?? []}
-        onChange={changeFilters}
-      />
-
       {data && (
         <ActivitiesMap
           activities={data.activities}
@@ -46,6 +40,12 @@ export function App() {
           onSelectActivity={toggleSelectedActivity}
         />
       )}
+
+      <ActivityFilters
+        filters={query.filters}
+        sportTypeOptions={data?.sportTypes ?? []}
+        onChange={changeFilters}
+      />
 
       {data?.total === 0 ? (
         <NoActivitiesMessage

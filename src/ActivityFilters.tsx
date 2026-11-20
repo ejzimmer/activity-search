@@ -1,7 +1,8 @@
 import './ActivityFilters.css';
 import type { SportTypeOption } from '../lib/sport-types.ts';
 import type { FilterValues } from './activityQuery.ts';
-import { DurationInputs } from './DurationInputs.tsx';
+import { DurationInput } from './DurationInput.tsx';
+import { RubbishBinIcon } from './icons/RubbishBinIcon.tsx';
 import { SportTypeSelect } from './SportTypeSelect.tsx';
 
 const NO_FILTERS: FilterValues = {
@@ -58,17 +59,20 @@ export function ActivityFilters({
           km
         </span>
       </label>
-      <DurationInputs
+      <DurationInput
         hours={filters.hours}
         minutes={filters.minutes}
         onChange={changeFilter}
       />
       <button
         type="button"
+        className="clear-filters"
+        aria-label="Clear filters"
+        title="Clear filters"
         onClick={() => onChange(NO_FILTERS)}
         disabled={!hasValues}
       >
-        Clear
+        <RubbishBinIcon width="18px" />
       </button>
     </search>
   );
