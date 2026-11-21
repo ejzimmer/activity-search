@@ -1,10 +1,10 @@
 import 'leaflet/dist/leaflet.css';
 import './ActivitiesMap.css';
 import { latLng } from 'leaflet';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import { NEAR_RADIUS_M, type Coordinates } from '../lib/coordinates.ts';
-import { FitMapToPoints } from './FitMapToPoints.tsx';
+import { FitMapToPointsOnLoad } from './FitMapToPointsOnLoad.tsx';
 import { NearbyArea } from './NearbyArea.tsx';
 import { PickPointOnClick } from './PickPointOnClick.tsx';
 import { RouteLine } from './RouteLine.tsx';
@@ -48,15 +48,22 @@ export function ActivitiesMap({
   const nearLat = nearPoint?.lat;
   const nearLng = nearPoint?.lng;
   const pointsToFit = useMemo(() => {
-    if (selected) return selected.route;
     const routePoints = activitiesWithRoutes.flatMap(({ route }) => route);
     if (nearLat === undefined || nearLng === undefined) return routePoints;
     return [
       ...routePoints,
       ...listNearbyAreaCorners({ lat: nearLat, lng: nearLng }),
     ];
-  }, [activitiesWithRoutes, selected, nearLat, nearLng]);
-  if (activitiesWithRoutes.length === 0 && !nearPoint) return null;
+  }, [activitiesWithRoutes, nearLat, nearLng]);
+  const hasSomethingToShow =
+    activitiesWithRoutes.length > 0 || nearPoint !== null;
+  const [hasShownMap, setHasShownMap] = useState(false);
+  // Unmounting the map would lose the person's pan and zoom, so once shown it
+  // stays, even when a filter leaves no routes.
+  if (!hasShownMap) {
+    if (!hasSomethingToShow) return null;
+    setHasShownMap(true);
+  }
 
   // Leaflet draws later lines on top, so the selected route goes last.
   const drawingOrder = selected
@@ -90,7 +97,7 @@ export function ActivitiesMap({
         ))}
         {nearPoint && <NearbyArea center={nearPoint} />}
         <PickPointOnClick onPickPoint={onPickPoint} />
-        <FitMapToPoints points={pointsToFit} />
+        <FitMapToPointsOnLoad points={pointsToFit} />
       </MapContainer>
     </section>
   );
