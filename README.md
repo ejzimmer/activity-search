@@ -72,13 +72,13 @@ any environment variables.
 
 Open the site, choose **Create an account**, and enter `SETUP_INVITE_CODE` as the
 invite code. It only works while there are no accounts. That first account is the
-admin: it gets every activity synced so far, and it can invite other people with
-**Invite someone**, which makes a link that works once, for seven days. Each person
-only sees their own activities and favourite places.
+admin: it gets every activity synced so far, and it can invite other people by
+opening **Invites** and choosing **Invite someone**, which makes a link that works
+once, for seven days. Each person only sees their own activities and favourite places.
 
-If someone forgets their password, the admin enters their email under **Make reset
-link** and sends them the link, which works once, for three days. If the admin forgets
-theirs, they choose **Forgot your password?** on the sign-in page and enter
+If someone forgets their password, the admin opens **Password resets**, enters their
+email under **Make reset link** and sends them the link, which works once, for three
+days. If the admin forgets theirs, they choose **Forgot your password?** on the sign-in page and enter
 `SETUP_INVITE_CODE` as the reset code. If that's lost too, set a new
 `SETUP_INVITE_CODE` secret and run **Deploy functions** before using it.
 
