@@ -60,3 +60,8 @@ export interface InviteResponse {
   code: string;
   expiresAt: string;
 }
+
+export interface PasswordResetLinkResponse {
+  code: string;
+  expiresAt: string;
+}

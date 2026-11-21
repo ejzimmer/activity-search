@@ -13,6 +13,7 @@ import {
   type GarminKeyServices,
 } from './garmin-keys.ts';
 import { createInvite } from './invites.ts';
+import { createPasswordResetLink, resetPassword } from './password-resets.ts';
 import { respondWithProblem } from './problem-response.ts';
 import { findSignedInUser } from './sessions.ts';
 
@@ -34,6 +35,8 @@ export async function routeApiRequest(
   if (method === 'POST' && pathname === '/sign-in') return signIn(sql, request);
   if (method === 'POST' && pathname === '/sign-out')
     return signOut(sql, request);
+  if (method === 'POST' && pathname === '/reset-password')
+    return resetPassword(sql, request, setupInviteCode);
 
   const user = await findSignedInUser(sql, request);
   if (!user) return respondWithProblem(401, 'Sign in to see this.');
@@ -44,6 +47,8 @@ export async function routeApiRequest(
     return getActivitiesPage(sql, request, user);
   if (method === 'POST' && pathname === '/invites')
     return createInvite(sql, user);
+  if (method === 'POST' && pathname === '/password-reset-links')
+    return createPasswordResetLink(sql, request, user);
   if (pathname === '/garmin-key') {
     if (method === 'PUT')
       return saveGarminKey(sql, request, user, garminKeyServices);

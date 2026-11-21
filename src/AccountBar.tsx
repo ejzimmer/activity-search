@@ -2,6 +2,7 @@ import './AccountBar.css';
 import { useState } from 'react';
 import { GarminKeyPanel } from './GarminKeyPanel.tsx';
 import { InvitePanel } from './InvitePanel.tsx';
+import { PasswordResetPanel } from './PasswordResetPanel.tsx';
 import type { GarminKeyStatus, SignedInUser } from './parseSignedInUser.ts';
 
 type AccountBarProps = {
@@ -40,6 +41,7 @@ export function AccountBar({
           />
         )}
         {user.isAdmin && <InvitePanel />}
+        {user.isAdmin && <PasswordResetPanel />}
       </div>
     </header>
   );

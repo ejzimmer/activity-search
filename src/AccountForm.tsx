@@ -40,7 +40,7 @@ export function AccountForm({
       <button type="submit" disabled={isSubmitting}>
         {submitLabel}
       </button>
-      <p className="footer">{footer}</p>
+      <div className="footer">{footer}</div>
     </form>
   );
 }

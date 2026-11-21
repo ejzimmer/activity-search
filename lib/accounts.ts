@@ -40,7 +40,7 @@ export function describeSignedInUser({
   return { email, isAdmin, garminKey };
 }
 
-async function respondWithNewSession(
+export async function respondWithNewSession(
   sql: Sql,
   user: SignedInUser,
   status: number,
@@ -52,7 +52,10 @@ async function respondWithNewSession(
   });
 }
 
-function isSetupInviteCode(inviteCode: string, setupInviteCode?: string) {
+export function isSetupInviteCode(
+  inviteCode: string,
+  setupInviteCode?: string,
+) {
   if (!setupInviteCode) return false;
   const hashCode = (code: string) => createHash('sha256').update(code).digest();
   return timingSafeEqual(hashCode(inviteCode), hashCode(setupInviteCode));

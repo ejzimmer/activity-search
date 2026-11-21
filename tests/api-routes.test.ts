@@ -1,6 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { MAX_SIGN_IN_FAILURES } from '../lib/accounts.ts';
 import { routeApiRequest } from '../lib/api-routes.ts';
+import { MAX_RESET_FAILURES } from '../lib/password-resets.ts';
 import type { Sql } from '../lib/db.ts';
 import { GarminApiError } from '../lib/garmin.ts';
 import { GarminKeyEncryption } from '../lib/garmin-key-encryption.ts';
@@ -453,6 +454,97 @@ describe('the API', () => {
           sessionCookie: friendCookie,
         });
         expect(usersSyncStartedFor).toEqual([2]);
+      });
+    });
+  });
+  describe('resetting a password', () => {
+    const NEW_PASSWORD = 'a brand new password';
+
+    async function createResetCode(adminCookie: string, email: string) {
+      const response = await callApi('/password-reset-links', {
+        method: 'POST',
+        sessionCookie: adminCookie,
+        body: { email },
+      });
+      return ((await response.json()) as { code: string }).code;
+    }
+
+    const resetPassword = (resetCode: string) =>
+      callApi('/reset-password', {
+        method: 'POST',
+        body: { resetCode, password: NEW_PASSWORD },
+      });
+
+    describe('with a link the admin made', () => {
+      it('lets the person sign in with the new password', async () => {
+        const adminCookie = await signUpAdmin();
+        await signUpFriend(adminCookie);
+        await resetPassword(await createResetCode(adminCookie, FRIEND.email));
+
+        const response = await callApi('/sign-in', {
+          method: 'POST',
+          body: { email: FRIEND.email, password: NEW_PASSWORD },
+        });
+        expect(response.status).toBe(200);
+      });
+
+      it("ends the person's other sessions", async () => {
+        const adminCookie = await signUpAdmin();
+        const friendCookie = await signUpFriend(adminCookie);
+        await resetPassword(await createResetCode(adminCookie, FRIEND.email));
+
+        const session = await callApi('/session', {
+          sessionCookie: friendCookie,
+        });
+        expect(session.status).toBe(401);
+      });
+
+      describe('that has already been used', () => {
+        it('rejects it', async () => {
+          const adminCookie = await signUpAdmin();
+          await signUpFriend(adminCookie);
+          const resetCode = await createResetCode(adminCookie, FRIEND.email);
+          await resetPassword(resetCode);
+
+          const response = await resetPassword(resetCode);
+          expect(response.status).toBe(403);
+        });
+      });
+    });
+
+    describe('with the setup invite code', () => {
+      it("resets the admin's password", async () => {
+        await signUpAdmin();
+        await resetPassword(SETUP_INVITE_CODE);
+
+        const response = await callApi('/sign-in', {
+          method: 'POST',
+          body: { email: ADMIN.email, password: NEW_PASSWORD },
+        });
+        expect(response.status).toBe(200);
+      });
+    });
+
+    describe(`after ${MAX_RESET_FAILURES} codes nobody issued`, () => {
+      it('rejects even a real code for a while', async () => {
+        await signUpAdmin();
+        for (let attempt = 0; attempt < MAX_RESET_FAILURES; attempt++) {
+          await resetPassword(`guess-${attempt}`);
+        }
+        const response = await resetPassword(SETUP_INVITE_CODE);
+        expect(response.status).toBe(429);
+      });
+    });
+
+    describe('when someone who is not the admin asks for a link', () => {
+      it('is refused', async () => {
+        const friendCookie = await signUpFriend(await signUpAdmin());
+        const response = await callApi('/password-reset-links', {
+          method: 'POST',
+          sessionCookie: friendCookie,
+          body: { email: ADMIN.email },
+        });
+        expect(response.status).toBe(403);
       });
     });
   });

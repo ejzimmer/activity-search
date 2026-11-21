@@ -25,12 +25,12 @@ export function SignUpForm({
         })
       }
       footer={
-        <>
+        <p>
           Already have an account?{' '}
           <button type="button" onClick={onSwitchToSignIn}>
             Sign in
           </button>
-        </>
+        </p>
       }
     >
       <label>

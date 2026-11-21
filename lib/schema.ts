@@ -79,6 +79,15 @@ export const SCHEMA = [
     last_finished_at    TIMESTAMPTZ,
     last_result         TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS password_resets (
+    code_hash           TEXT PRIMARY KEY,
+    user_id             INTEGER NOT NULL REFERENCES users ON DELETE CASCADE,
+    expires_at          TIMESTAMPTZ NOT NULL,
+    used_at             TIMESTAMPTZ
+  )`,
+  `CREATE TABLE IF NOT EXISTS password_reset_failures (
+    failed_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
 ];
 
 export async function ensureSchema(sql: Sql) {
