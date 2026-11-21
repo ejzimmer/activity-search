@@ -1,3 +1,5 @@
+import { parseCoordinates, type Coordinates } from '../lib/coordinates.ts';
+
 /** What's typed into the filter form, kept as text so a half-typed value survives a round trip through the URL. */
 export interface FilterValues {
   sportType: string;
@@ -5,7 +7,19 @@ export interface FilterValues {
   distanceKm: string;
   hours: string;
   minutes: string;
+  nearLat: string;
+  nearLng: string;
 }
+
+export const NO_FILTERS: FilterValues = {
+  sportType: '',
+  name: '',
+  distanceKm: '',
+  hours: '',
+  minutes: '',
+  nearLat: '',
+  nearLng: '',
+};
 
 export interface ActivityQuery {
   page: number;
@@ -18,6 +32,8 @@ const FILTER_PARAMS: Record<keyof FilterValues, string> = {
   distanceKm: 'km',
   hours: 'hours',
   minutes: 'minutes',
+  nearLat: 'lat',
+  nearLng: 'lng',
 };
 
 export function readActivityQuery(params: URLSearchParams): ActivityQuery {
@@ -54,6 +70,22 @@ function convertDurationToSeconds(hours: string, minutes: string) {
   return duration.total('seconds');
 }
 
+/** Five decimal places is about a metre, which is closer than GPS can place a run's start. */
+function formatCoordinate(coordinate: number) {
+  return coordinate.toFixed(5);
+}
+
+export function createNearFilterValues({
+  lat,
+  lng,
+}: Coordinates): Pick<FilterValues, 'nearLat' | 'nearLng'> {
+  return { nearLat: formatCoordinate(lat), nearLng: formatCoordinate(lng) };
+}
+
+export function readNearPoint(filters: FilterValues): Coordinates | null {
+  return parseCoordinates(filters.nearLat, filters.nearLng);
+}
+
 /** The API takes distance in metres and duration in seconds. */
 export function createApiSearchParams({
   page,
@@ -70,6 +102,11 @@ export function createApiSearchParams({
     filters.minutes,
   );
   if (durationSeconds > 0) params.set('duration', String(durationSeconds));
+  const nearPoint = readNearPoint(filters);
+  if (nearPoint) {
+    params.set('lat', String(nearPoint.lat));
+    params.set('lng', String(nearPoint.lng));
+  }
   return params;
 }
 

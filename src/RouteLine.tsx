@@ -29,6 +29,9 @@ export function RouteLine({
         positions={route}
         className={isSelected ? 'route-line selected' : 'route-line'}
         pathOptions={{ weight: isSelected ? 5 : 3 }}
+        // Otherwise Leaflet passes the click on to the map, which would pick
+        // a location as well as selecting the route.
+        bubblingMouseEvents={false}
         eventHandlers={{ click: () => onSelect(activity.id) }}
       >
         <Tooltip sticky>

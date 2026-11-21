@@ -1,8 +1,12 @@
 import 'leaflet/dist/leaflet.css';
 import './ActivitiesMap.css';
+import { latLng } from 'leaflet';
 import { useMemo } from 'react';
 import { MapContainer, TileLayer } from 'react-leaflet';
-import { FitMapToRoutes } from './FitMapToRoutes.tsx';
+import { NEAR_RADIUS_M, type Coordinates } from '../lib/coordinates.ts';
+import { FitMapToPoints } from './FitMapToPoints.tsx';
+import { NearbyArea } from './NearbyArea.tsx';
+import { PickPointOnClick } from './PickPointOnClick.tsx';
 import { RouteLine } from './RouteLine.tsx';
 import type { Activity, LatLng } from './types.ts';
 
@@ -10,7 +14,17 @@ type ActivitiesMapProps = {
   activities: Activity[];
   selectedActivityId: string | null;
   onSelectActivity: (activityId: string) => void;
+  nearPoint: Coordinates | null;
+  onPickPoint: (point: Coordinates) => void;
 };
+
+function listNearbyAreaCorners(center: Coordinates): LatLng[] {
+  const bounds = latLng(center).toBounds(NEAR_RADIUS_M * 2);
+  return [
+    [bounds.getSouth(), bounds.getWest()],
+    [bounds.getNorth(), bounds.getEast()],
+  ];
+}
 
 type ActivityWithRoute = { activity: Activity; route: LatLng[] };
 
@@ -18,6 +32,8 @@ export function ActivitiesMap({
   activities,
   selectedActivityId,
   onSelectActivity,
+  nearPoint,
+  onPickPoint,
 }: ActivitiesMapProps) {
   const activitiesWithRoutes: ActivityWithRoute[] = useMemo(
     () =>
@@ -29,14 +45,18 @@ export function ActivitiesMap({
   const selected = activitiesWithRoutes.find(
     ({ activity }) => activity.id === selectedActivityId,
   );
-  const routesToFit = useMemo(
-    () =>
-      selected
-        ? [selected.route]
-        : activitiesWithRoutes.map(({ route }) => route),
-    [activitiesWithRoutes, selected],
-  );
-  if (activitiesWithRoutes.length === 0) return null;
+  const nearLat = nearPoint?.lat;
+  const nearLng = nearPoint?.lng;
+  const pointsToFit = useMemo(() => {
+    if (selected) return selected.route;
+    const routePoints = activitiesWithRoutes.flatMap(({ route }) => route);
+    if (nearLat === undefined || nearLng === undefined) return routePoints;
+    return [
+      ...routePoints,
+      ...listNearbyAreaCorners({ lat: nearLat, lng: nearLng }),
+    ];
+  }, [activitiesWithRoutes, selected, nearLat, nearLng]);
+  if (activitiesWithRoutes.length === 0 && !nearPoint) return null;
 
   // Leaflet draws later lines on top, so the selected route goes last.
   const drawingOrder = selected
@@ -68,7 +88,9 @@ export function ActivitiesMap({
             onSelect={onSelectActivity}
           />
         ))}
-        <FitMapToRoutes routes={routesToFit} />
+        {nearPoint && <NearbyArea center={nearPoint} />}
+        <PickPointOnClick onPickPoint={onPickPoint} />
+        <FitMapToPoints points={pointsToFit} />
       </MapContainer>
     </section>
   );

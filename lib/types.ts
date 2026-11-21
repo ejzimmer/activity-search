@@ -31,3 +31,12 @@ export interface ActivitiesPageResponse {
   sportTypes: SportTypeOption[];
   sync: SyncStatusResponse | null;
 }
+
+export interface FavouriteLocationResponse {
+  id: number;
+  name: string;
+  lat: number;
+  lng: number;
+}
+
+export type NewFavouriteLocation = Omit<FavouriteLocationResponse, 'id'>;

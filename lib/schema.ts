@@ -40,6 +40,13 @@ export const SCHEMA = [
     last_result         TEXT
   )`,
   `INSERT INTO sync_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
+  `CREATE TABLE IF NOT EXISTS favourite_locations (
+    id                  SERIAL PRIMARY KEY,
+    name                TEXT NOT NULL,
+    lat                 DOUBLE PRECISION NOT NULL,
+    lng                 DOUBLE PRECISION NOT NULL,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
 ];
 
 export async function ensureSchema(sql: Sql) {
