@@ -45,9 +45,15 @@ export interface ProblemResponse {
   problem: string;
 }
 
+export interface GarminKeyResponse {
+  savedAt: string;
+  isRejected: boolean;
+}
+
 export interface SignedInUserResponse {
   email: string;
   isAdmin: boolean;
+  garminKey: GarminKeyResponse | null;
 }
 
 export interface InviteResponse {

@@ -32,14 +32,6 @@ export const SCHEMA = [
     imported_at         TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
   `CREATE INDEX IF NOT EXISTS activities_start_date_idx ON activities (start_date DESC, id DESC)`,
-  `CREATE TABLE IF NOT EXISTS sync_state (
-    id                  INTEGER PRIMARY KEY CHECK (id = 1),
-    locked_until        TIMESTAMPTZ,
-    last_started_at     TIMESTAMPTZ,
-    last_finished_at    TIMESTAMPTZ,
-    last_result         TEXT
-  )`,
-  `INSERT INTO sync_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING`,
   `CREATE TABLE IF NOT EXISTS favourite_locations (
     id                  SERIAL PRIMARY KEY,
     name                TEXT NOT NULL,
@@ -76,6 +68,17 @@ export const SCHEMA = [
   `ALTER TABLE activities ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users ON DELETE CASCADE`,
   `CREATE INDEX IF NOT EXISTS activities_user_start_date_idx ON activities (user_id, start_date DESC, id DESC)`,
   `ALTER TABLE favourite_locations ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users ON DELETE CASCADE`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS garmin_key_encrypted TEXT`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS garmin_key_saved_at TIMESTAMPTZ`,
+  `ALTER TABLE users ADD COLUMN IF NOT EXISTS is_garmin_key_rejected BOOLEAN NOT NULL DEFAULT false`,
+  `DROP TABLE IF EXISTS sync_state`,
+  `CREATE TABLE IF NOT EXISTS user_sync_state (
+    user_id             INTEGER PRIMARY KEY REFERENCES users ON DELETE CASCADE,
+    locked_until        TIMESTAMPTZ,
+    last_started_at     TIMESTAMPTZ,
+    last_finished_at    TIMESTAMPTZ,
+    last_result         TEXT
+  )`,
 ];
 
 export async function ensureSchema(sql: Sql) {

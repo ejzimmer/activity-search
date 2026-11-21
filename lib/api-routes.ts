@@ -6,6 +6,12 @@ import {
   listFavouriteLocations,
   removeFavouriteLocation,
 } from './favourite-locations.ts';
+import {
+  removeGarminKey,
+  saveGarminKey,
+  startSyncNow,
+  type GarminKeyServices,
+} from './garmin-keys.ts';
 import { createInvite } from './invites.ts';
 import { respondWithProblem } from './problem-response.ts';
 import { findSignedInUser } from './sessions.ts';
@@ -13,11 +19,12 @@ import { findSignedInUser } from './sessions.ts';
 export interface ApiContext {
   sql: Sql;
   setupInviteCode?: string;
+  garminKeyServices: GarminKeyServices;
 }
 
 export async function routeApiRequest(
   request: Request,
-  { sql, setupInviteCode }: ApiContext,
+  { sql, setupInviteCode, garminKeyServices }: ApiContext,
 ): Promise<Response> {
   const { method } = request;
   const { pathname } = new URL(request.url);
@@ -37,6 +44,13 @@ export async function routeApiRequest(
     return getActivitiesPage(sql, request, user);
   if (method === 'POST' && pathname === '/invites')
     return createInvite(sql, user);
+  if (pathname === '/garmin-key') {
+    if (method === 'PUT')
+      return saveGarminKey(sql, request, user, garminKeyServices);
+    if (method === 'DELETE') return removeGarminKey(sql, user);
+  }
+  if (method === 'POST' && pathname === '/sync-now')
+    return startSyncNow(user, garminKeyServices.startSyncForUser);
   if (pathname === '/favourite-locations') {
     if (method === 'GET') return listFavouriteLocations(sql, user);
     if (method === 'POST') return addFavouriteLocation(sql, request, user);

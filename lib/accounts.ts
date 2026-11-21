@@ -11,6 +11,7 @@ import { hashSecretToken } from './secret-tokens.ts';
 import {
   createSignedOutCookie,
   endSession,
+  selectGarminKeyStatus,
   startSession,
   type SignedInUser,
 } from './sessions.ts';
@@ -34,8 +35,9 @@ interface AccountProblem {
 export function describeSignedInUser({
   email,
   isAdmin,
+  garminKey,
 }: SignedInUser): SignedInUserResponse {
-  return { email, isAdmin };
+  return { email, isAdmin, garminKey };
 }
 
 async function respondWithNewSession(
@@ -75,7 +77,7 @@ async function createFirstUser(
       UPDATE favourite_locations SET user_id = new_user.id
       FROM new_user WHERE favourite_locations.user_id IS NULL
     )
-    SELECT id, email, is_admin AS "isAdmin" FROM new_user
+    SELECT id, email, is_admin AS "isAdmin", NULL AS "garminKey" FROM new_user
   `;
   return (
     (user as SignedInUser | undefined) ?? {
@@ -117,7 +119,7 @@ async function createInvitedUser(
     UPDATE invites SET used_by = new_user.id, used_at = now()
     FROM new_user
     WHERE invites.code_hash = ${codeHash} AND invites.used_at IS NULL
-    RETURNING new_user.id, new_user.email, new_user.is_admin AS "isAdmin"
+    RETURNING new_user.id, new_user.email, new_user.is_admin AS "isAdmin", NULL AS "garminKey"
   `;
   return (
     (user as SignedInUser | undefined) ?? {
@@ -173,7 +175,8 @@ export async function signIn(sql: Sql, request: Request): Promise<Response> {
   }
 
   const [account] = (await sql`
-    SELECT id, email, is_admin AS "isAdmin", password_hash AS "passwordHash"
+    SELECT users.id, users.email, users.is_admin AS "isAdmin",
+           users.password_hash AS "passwordHash", ${selectGarminKeyStatus(sql)}
     FROM users WHERE email = ${details.email}
   `) as Array<SignedInUser & { passwordHash: string }>;
   const isCorrect = await isPasswordCorrect(

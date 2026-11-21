@@ -30,6 +30,10 @@
   outline-offset: 2px;
 }
 
-.account-bar .invite-panel {
+.account-bar .panels {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1rem;
   flex-basis: 100%;
 }

@@ -10,7 +10,6 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "sync": "tsx scripts/sync-garmin.ts",
     "format": "prettier --write ."
   },
   "dependencies": {

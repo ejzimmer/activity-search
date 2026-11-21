@@ -1,6 +1,6 @@
 # Project notes for Claude
 
-Activity search: a personal app that syncs erin's activities from the Garmin Connect Personal API into Neon Postgres and shows them in a paginated table. The React front end (`src/`) is hosted on Netlify. The API and the sync are one Neon Function (`functions/api.ts`, configured in `neon.ts`, shared code in `lib/`) in a Neon project in Singapore, because Neon Functions don't run in Sydney. The database is a separate Neon project in Sydney (`ACTIVITIES_DATABASE_URL`). GitHub Actions deploys the function on every push to `main`.
+Activity search: an invite-only app that syncs each user's activities from the Garmin Connect Personal API into Neon Postgres and shows them in a paginated table. The React front end (`src/`) is hosted on Netlify. The API and the sync are one Neon Function (`functions/api.ts`, configured in `neon.ts`, shared code in `lib/`) in a Neon project in Singapore, because Neon Functions don't run in Sydney. The database is a separate Neon project in Sydney (`ACTIVITIES_DATABASE_URL`). GitHub Actions deploys the function on every push to `main`.
 
 ## Coding standards
 
@@ -8,7 +8,7 @@ These rules match erin's `coding-standards` skill. Follow the spirit of each rul
 
 ## erin works without a terminal
 
-Setup and anything erin has to do must be possible in a browser (GitHub, Netlify, Neon, Garmin Connect). Don't hand over steps that need a console. Work that needs to run somewhere runs on Neon (a daily schedule trigger calls `POST /sync`) or in GitHub Actions (deploys, and the "Sync now" workflow). Secrets go in the repo's GitHub Actions secrets, which erin can set in the browser.
+Setup and anything erin has to do must be possible in a browser (GitHub, Netlify, Neon, Garmin Connect). Don't hand over steps that need a console. Work that needs to run somewhere runs on Neon (a daily schedule trigger calls `POST /sync`, and the app's "Sync now" button) or in GitHub Actions (deploys). Secrets go in the repo's GitHub Actions secrets, which erin can set in the browser.
 
 ## Node and Temporal
 

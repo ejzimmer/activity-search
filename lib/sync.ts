@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type { Sql } from './db.ts';
 import {
   GarminApiError,
@@ -6,7 +5,6 @@ import {
   createActivityRow,
   type ActivityRow,
 } from './garmin.ts';
-import { ensureSchema } from './schema.ts';
 import { readZipPoints, summariseTrack } from './tracks.ts';
 
 const PAGE_SIZE = 100;
@@ -14,6 +12,7 @@ const PAGE_SIZE = 100;
 export interface SyncOptions {
   sql: Sql;
   garmin: GarminClient;
+  userId: number;
   full?: boolean;
   /** After this, the run stops starting new work. */
   deadline?: Temporal.Instant;
@@ -31,19 +30,20 @@ export interface SyncResult {
 export async function syncWithGarmin(
   options: SyncOptions,
 ): Promise<SyncResult> {
-  const { sql, log = console.log } = options;
-  await ensureSchema(sql);
+  const { sql, userId, log = console.log } = options;
 
   const lockMinutes = options.deadline
     ? Math.ceil(
         options.deadline.since(Temporal.Now.instant()).total('minutes'),
       ) + 2
     : 24 * 60;
-  const claimed = await sql.query(
-    `UPDATE sync_state SET locked_until = now() + make_interval(mins => $1), last_started_at = now()
-     WHERE id = 1 AND (locked_until IS NULL OR locked_until < now()) RETURNING id`,
-    [lockMinutes],
-  );
+  await sql`INSERT INTO user_sync_state (user_id) VALUES (${userId}) ON CONFLICT (user_id) DO NOTHING`;
+  const claimed = await sql`
+    UPDATE user_sync_state
+    SET locked_until = now() + make_interval(mins => ${lockMinutes}), last_started_at = now()
+    WHERE user_id = ${userId} AND (locked_until IS NULL OR locked_until < now())
+    RETURNING user_id
+  `;
   if ((claimed as unknown[]).length === 0) {
     const message = 'Another sync is already running';
     log(message);
@@ -58,16 +58,18 @@ export async function syncWithGarmin(
 
   try {
     const result = await syncActivities({ ...options, log });
-    await sql`UPDATE sync_state SET locked_until = NULL, last_finished_at = now(), last_result = ${result.message} WHERE id = 1`;
+    await sql`UPDATE user_sync_state SET locked_until = NULL, last_finished_at = now(), last_result = ${result.message} WHERE user_id = ${userId}`;
     return result;
   } catch (error) {
     const keyRejected =
       error instanceof GarminApiError &&
       (error.status === 401 || error.status === 403);
     const message = keyRejected
-      ? 'Failed: Garmin rejected the API key. It may have expired; create a new one and update GARMIN_PERSONAL_API_KEY.'
+      ? 'Failed: Garmin rejected your key. It may have expired, so add a new one.'
       : `Failed: ${(error as Error).message}`;
-    await sql`UPDATE sync_state SET locked_until = NULL, last_finished_at = now(), last_result = ${message} WHERE id = 1`;
+    if (keyRejected)
+      await sql`UPDATE users SET is_garmin_key_rejected = true WHERE id = ${userId}`;
+    await sql`UPDATE user_sync_state SET locked_until = NULL, last_finished_at = now(), last_result = ${message} WHERE user_id = ${userId}`;
     throw error;
   }
 }
@@ -75,6 +77,7 @@ export async function syncWithGarmin(
 async function syncActivities({
   sql,
   garmin,
+  userId,
   full,
   deadline,
   log,
@@ -85,7 +88,7 @@ async function syncActivities({
 
   const [{ latestDay }] = (await sql`
     SELECT to_char(max(start_date) AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS "latestDay"
-    FROM activities
+    FROM activities WHERE user_id = ${userId}
   `) as [{ latestDay: string | null }];
   let startDate: string | undefined;
   if (latestDay && !full) {
@@ -113,7 +116,7 @@ async function syncActivities({
         log(`Skipping activity: ${(error as Error).message}`);
       }
     }
-    if (rows.length) await upsertActivities(sql, rows);
+    if (rows.length) await upsertActivities(sql, rows, userId);
     activitiesSaved += rows.length;
     log(`  saved ${activitiesSaved} activities`);
     if (page.length < PAGE_SIZE || isOutOfTime()) break;
@@ -121,7 +124,8 @@ async function syncActivities({
 
   const pending = (await sql`
     SELECT id::text FROM activities
-    WHERE track_checked_at IS NULL
+    WHERE user_id = ${userId}
+      AND track_checked_at IS NULL
       AND (start_lat IS NOT NULL OR raw->>'hasPolyline' IS DISTINCT FROM 'false')
     ORDER BY start_date DESC
   `) as Array<{ id: string }>;
@@ -184,23 +188,7 @@ async function syncActivities({
   } satisfies SyncResult;
 }
 
-export function createSyncToken(apiKey: string): string {
-  return createHash('sha256')
-    .update(`activity-search sync:${apiKey}`)
-    .digest('hex');
-}
-
-export function startBackgroundSync(
-  apiUrl: string,
-  apiKey: string,
-): Promise<Response> {
-  return fetch(`${apiUrl}/sync`, {
-    method: 'POST',
-    headers: { 'x-sync-token': createSyncToken(apiKey) },
-  });
-}
-
-async function upsertActivities(sql: Sql, rows: ActivityRow[]) {
+async function upsertActivities(sql: Sql, rows: ActivityRow[], userId: number) {
   await sql.query(
     `INSERT INTO activities (
        id, name, sport_type, description, location_name, start_date, start_date_local,
@@ -212,8 +200,7 @@ async function upsertActivities(sql: Sql, rows: ActivityRow[]) {
        id::bigint, name, sport_type, description, location_name, start_date, start_date_local,
        distance_m, moving_time_s, elapsed_time_s, elevation_gain_m, average_speed_mps,
        max_speed_mps, average_heartrate, max_heartrate, calories,
-       start_lat, start_lng, end_lat, end_lng, raw,
-       (SELECT id FROM users WHERE is_admin)
+       start_lat, start_lng, end_lat, end_lng, raw, $2::int
      FROM jsonb_to_recordset($1::jsonb) AS r(
        id text, name text, sport_type text, description text, location_name text,
        start_date timestamptz, start_date_local timestamp, distance_m float8,
@@ -233,8 +220,8 @@ async function upsertActivities(sql: Sql, rows: ActivityRow[]) {
        start_lng = COALESCE(EXCLUDED.start_lng, activities.start_lng),
        end_lat = COALESCE(EXCLUDED.end_lat, activities.end_lat),
        end_lng = COALESCE(EXCLUDED.end_lng, activities.end_lng),
-       raw = EXCLUDED.raw, imported_at = now(),
-       user_id = COALESCE(activities.user_id, EXCLUDED.user_id)`,
-    [JSON.stringify(rows)],
+       raw = EXCLUDED.raw, imported_at = now(), user_id = EXCLUDED.user_id
+     WHERE activities.user_id = EXCLUDED.user_id OR activities.user_id IS NULL`,
+    [JSON.stringify(rows), userId],
   );
 }

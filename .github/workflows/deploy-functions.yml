@@ -29,7 +29,7 @@ jobs:
         run: npx neon deploy --project-id "$NEON_PROJECT_ID" --yes --no-env-pull
         env:
           ACTIVITIES_DATABASE_URL: ${{ secrets.ACTIVITIES_DATABASE_URL }}
-          GARMIN_PERSONAL_API_KEY: ${{ secrets.GARMIN_PERSONAL_API_KEY }}
+          GARMIN_KEY_ENCRYPTION_SECRET: ${{ secrets.GARMIN_KEY_ENCRYPTION_SECRET }}
           SETUP_INVITE_CODE: ${{ secrets.SETUP_INVITE_CODE }}
       - name: Show the API's URL
         run: |

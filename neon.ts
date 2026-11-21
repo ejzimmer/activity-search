@@ -11,8 +11,8 @@ export default defineConfig({
           value: process.env.ACTIVITIES_DATABASE_URL,
           required: true,
         },
-        GARMIN_PERSONAL_API_KEY: {
-          value: process.env.GARMIN_PERSONAL_API_KEY,
+        GARMIN_KEY_ENCRYPTION_SECRET: {
+          value: process.env.GARMIN_KEY_ENCRYPTION_SECRET,
           required: true,
         },
         SETUP_INVITE_CODE: {
