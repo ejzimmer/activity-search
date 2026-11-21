@@ -47,10 +47,12 @@ copy the connection string.
 
 In this repo on GitHub, go to **Settings → Secrets and variables → Actions**.
 
-1. On the **Secrets** tab, add three repository secrets:
+1. On the **Secrets** tab, add four repository secrets:
    - `NEON_API_KEY`: the Neon API key
    - `ACTIVITIES_DATABASE_URL`: the Sydney connection string
    - `GARMIN_PERSONAL_API_KEY`: your Garmin key
+   - `SETUP_INVITE_CODE`: a long phrase you make up, used once to create the first
+     account
 2. On the **Variables** tab, add a repository variable `NEON_FUNCTIONS_PROJECT_ID`
    holding the Singapore project ID.
 
@@ -68,7 +70,15 @@ At <https://app.netlify.com>, import this repo (**Add new project → Import an 
 project**), keeping the build settings from `netlify.toml`. The front end doesn't need
 any environment variables.
 
-### 7. Run the first sync
+### 7. Create your account
+
+Open the site, choose **Create an account**, and enter `SETUP_INVITE_CODE` as the
+invite code. It only works while there are no accounts. That first account is the
+admin: it gets every activity synced so far, and it can invite other people with
+**Invite someone**, which makes a link that works once, for seven days. Each person
+only sees their own activities and favourite places.
+
+### 8. Run the first sync
 
 A sync runs once a day on its own. To start one now, go to **Actions → Sync now → Run
 workflow**.

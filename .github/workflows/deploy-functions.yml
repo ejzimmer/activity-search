@@ -30,6 +30,7 @@ jobs:
         env:
           ACTIVITIES_DATABASE_URL: ${{ secrets.ACTIVITIES_DATABASE_URL }}
           GARMIN_PERSONAL_API_KEY: ${{ secrets.GARMIN_PERSONAL_API_KEY }}
+          SETUP_INVITE_CODE: ${{ secrets.SETUP_INVITE_CODE }}
       - name: Show the API's URL
         run: |
           url=$(npx neon functions get api --project-id "$NEON_PROJECT_ID" --output json | jq -r '.invocation_url // .[0].invocation_url')

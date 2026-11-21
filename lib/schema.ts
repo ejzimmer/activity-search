@@ -47,6 +47,35 @@ export const SCHEMA = [
     lng                 DOUBLE PRECISION NOT NULL,
     created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
   )`,
+  `CREATE TABLE IF NOT EXISTS users (
+    id                  INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email               TEXT NOT NULL UNIQUE,         -- trimmed and lower-cased
+    password_hash       TEXT NOT NULL,
+    is_admin            BOOLEAN NOT NULL DEFAULT false,
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS users_one_admin_idx ON users ((true)) WHERE is_admin`,
+  `CREATE TABLE IF NOT EXISTS sessions (
+    token_hash          TEXT PRIMARY KEY,
+    user_id             INTEGER NOT NULL REFERENCES users ON DELETE CASCADE,
+    expires_at          TIMESTAMPTZ NOT NULL
+  )`,
+  `CREATE TABLE IF NOT EXISTS invites (
+    code_hash           TEXT PRIMARY KEY,
+    created_by          INTEGER NOT NULL REFERENCES users ON DELETE CASCADE,
+    expires_at          TIMESTAMPTZ NOT NULL,
+    used_by             INTEGER REFERENCES users ON DELETE SET NULL,
+    used_at             TIMESTAMPTZ
+  )`,
+  `CREATE TABLE IF NOT EXISTS sign_in_failures (
+    email               TEXT NOT NULL,
+    failed_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+  )`,
+  `CREATE INDEX IF NOT EXISTS sign_in_failures_email_idx ON sign_in_failures (email, failed_at)`,
+  // Rows synced before there were accounts have no user until the first account claims them.
+  `ALTER TABLE activities ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users ON DELETE CASCADE`,
+  `CREATE INDEX IF NOT EXISTS activities_user_start_date_idx ON activities (user_id, start_date DESC, id DESC)`,
+  `ALTER TABLE favourite_locations ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users ON DELETE CASCADE`,
 ];
 
 export async function ensureSchema(sql: Sql) {

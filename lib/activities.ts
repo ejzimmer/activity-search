@@ -1,7 +1,8 @@
 import { NEAR_RADIUS_M, type Coordinates } from './coordinates.ts';
-import { connectToDatabase, type Sql } from './db.ts';
+import type { Sql } from './db.ts';
 import { parseActivityFilters, type ActivityFilters } from './filters.ts';
 import { parsePagination } from './pagination.ts';
+import type { SignedInUser } from './sessions.ts';
 import { listSportTypeOptions } from './sport-types.ts';
 import type {
   ActivitiesPageResponse,
@@ -44,6 +45,7 @@ function createStartsOrEndsNearCondition(sql: Sql, point: Coordinates) {
 
 function createFilterCondition(
   sql: Sql,
+  user: SignedInUser,
   {
     sportTypes,
     namePattern,
@@ -52,7 +54,7 @@ function createFilterCondition(
     nearPoint,
   }: ActivityFilters,
 ) {
-  const conditions = [sql`TRUE`];
+  const conditions = [sql`user_id = ${user.id}`];
   if (sportTypes) conditions.push(sql`sport_type = ANY(${sportTypes})`);
   if (namePattern) conditions.push(sql`name ILIKE ${namePattern}`);
   if (distanceRange)
@@ -72,12 +74,16 @@ function createFilterCondition(
   );
 }
 
-export async function getActivitiesPage(request: Request): Promise<Response> {
+export async function getActivitiesPage(
+  sql: Sql,
+  request: Request,
+  user: SignedInUser,
+): Promise<Response> {
   const searchParams = new URL(request.url).searchParams;
   const { page, pageSize, offset } = parsePagination(searchParams);
-  const sql = connectToDatabase();
   const filterCondition = createFilterCondition(
     sql,
+    user,
     parseActivityFilters(searchParams),
   );
 
@@ -92,11 +98,12 @@ export async function getActivitiesPage(request: Request): Promise<Response> {
         LIMIT ${pageSize} OFFSET ${offset}
       `,
       sql`SELECT count(*)::int AS count FROM activities WHERE ${filterCondition}`,
-      sql`SELECT DISTINCT sport_type FROM activities WHERE sport_type IS NOT NULL`,
+      sql`SELECT DISTINCT sport_type FROM activities WHERE user_id = ${user.id} AND sport_type IS NOT NULL`,
+      // The sync still runs on one Garmin key, the admin's.
       sql`
         SELECT last_started_at, last_finished_at, last_result,
                coalesce(locked_until > now(), false) AS running
-        FROM sync_state WHERE id = 1
+        FROM sync_state WHERE id = 1 AND ${user.isAdmin}
       `,
     ]);
     const total = count as number;

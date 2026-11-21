@@ -206,13 +206,14 @@ async function upsertActivities(sql: Sql, rows: ActivityRow[]) {
        id, name, sport_type, description, location_name, start_date, start_date_local,
        distance_m, moving_time_s, elapsed_time_s, elevation_gain_m, average_speed_mps,
        max_speed_mps, average_heartrate, max_heartrate, calories,
-       start_lat, start_lng, end_lat, end_lng, raw
+       start_lat, start_lng, end_lat, end_lng, raw, user_id
      )
      SELECT
        id::bigint, name, sport_type, description, location_name, start_date, start_date_local,
        distance_m, moving_time_s, elapsed_time_s, elevation_gain_m, average_speed_mps,
        max_speed_mps, average_heartrate, max_heartrate, calories,
-       start_lat, start_lng, end_lat, end_lng, raw
+       start_lat, start_lng, end_lat, end_lng, raw,
+       (SELECT id FROM users WHERE is_admin)
      FROM jsonb_to_recordset($1::jsonb) AS r(
        id text, name text, sport_type text, description text, location_name text,
        start_date timestamptz, start_date_local timestamp, distance_m float8,
@@ -232,7 +233,8 @@ async function upsertActivities(sql: Sql, rows: ActivityRow[]) {
        start_lng = COALESCE(EXCLUDED.start_lng, activities.start_lng),
        end_lat = COALESCE(EXCLUDED.end_lat, activities.end_lat),
        end_lng = COALESCE(EXCLUDED.end_lng, activities.end_lng),
-       raw = EXCLUDED.raw, imported_at = now()`,
+       raw = EXCLUDED.raw, imported_at = now(),
+       user_id = COALESCE(activities.user_id, EXCLUDED.user_id)`,
     [JSON.stringify(rows)],
   );
 }
