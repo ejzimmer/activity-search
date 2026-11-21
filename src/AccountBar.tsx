@@ -19,6 +19,8 @@ export function AccountBar({
   const [isGarminKeyOpen, setIsGarminKeyOpen] = useState(
     !user.garminKey || user.garminKey.isRejected,
   );
+  const [isInvitesOpen, setIsInvitesOpen] = useState(false);
+  const [isPasswordResetsOpen, setIsPasswordResetsOpen] = useState(false);
 
   return (
     <header className="account-bar">
@@ -30,6 +32,24 @@ export function AccountBar({
       >
         Garmin key
       </button>
+      {user.isAdmin && (
+        <button
+          type="button"
+          aria-expanded={isInvitesOpen}
+          onClick={() => setIsInvitesOpen((isOpen) => !isOpen)}
+        >
+          Invites
+        </button>
+      )}
+      {user.isAdmin && (
+        <button
+          type="button"
+          aria-expanded={isPasswordResetsOpen}
+          onClick={() => setIsPasswordResetsOpen((isOpen) => !isOpen)}
+        >
+          Password resets
+        </button>
+      )}
       <button type="button" onClick={onSignOut}>
         Sign out
       </button>
@@ -40,8 +60,8 @@ export function AccountBar({
             onGarminKeyChange={onGarminKeyChange}
           />
         )}
-        {user.isAdmin && <InvitePanel />}
-        {user.isAdmin && <PasswordResetPanel />}
+        {user.isAdmin && isInvitesOpen && <InvitePanel />}
+        {user.isAdmin && isPasswordResetsOpen && <PasswordResetPanel />}
       </div>
     </header>
   );

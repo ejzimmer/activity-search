@@ -3,7 +3,7 @@
 }
 
 .activities-map .leaflet-container {
-  height: 24rem;
+  height: min(48rem, 75vh);
   cursor: crosshair;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
