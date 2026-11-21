@@ -4,11 +4,18 @@ import { SignedOutPage } from './SignedOutPage.tsx';
 import { useSession } from './useSession.ts';
 
 export function App() {
-  const { session, signIn, signUp, signOut, changeGarminKey } = useSession();
+  const { session, signIn, signUp, resetPassword, signOut, changeGarminKey } =
+    useSession();
 
   if (session.status === 'checking') return null;
   if (session.status === 'signed-out')
-    return <SignedOutPage onSignIn={signIn} onSignUp={signUp} />;
+    return (
+      <SignedOutPage
+        onSignIn={signIn}
+        onSignUp={signUp}
+        onResetPassword={resetPassword}
+      />
+    );
   return (
     <>
       <AccountBar

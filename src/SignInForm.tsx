@@ -4,9 +4,14 @@ import type { SignInDetails } from './useSession.ts';
 type SignInFormProps = {
   onSignIn: (details: SignInDetails) => Promise<string | null>;
   onSwitchToSignUp: () => void;
+  onSwitchToPasswordReset: () => void;
 };
 
-export function SignInForm({ onSignIn, onSwitchToSignUp }: SignInFormProps) {
+export function SignInForm({
+  onSignIn,
+  onSwitchToSignUp,
+  onSwitchToPasswordReset,
+}: SignInFormProps) {
   return (
     <AccountForm
       heading="Sign in"
@@ -19,10 +24,18 @@ export function SignInForm({ onSignIn, onSwitchToSignUp }: SignInFormProps) {
       }
       footer={
         <>
-          Got an invite?{' '}
-          <button type="button" onClick={onSwitchToSignUp}>
-            Create an account
-          </button>
+          <p>
+            Got an invite?{' '}
+            <button type="button" onClick={onSwitchToSignUp}>
+              Create an account
+            </button>
+          </p>
+          <p>
+            Forgot your password?{' '}
+            <button type="button" onClick={onSwitchToPasswordReset}>
+              Reset it
+            </button>
+          </p>
         </>
       }
     >

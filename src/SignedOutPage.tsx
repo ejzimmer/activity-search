@@ -1,45 +1,79 @@
 import { useState } from 'react';
+import { ResetPasswordForm } from './ResetPasswordForm.tsx';
 import { SignInForm } from './SignInForm.tsx';
 import { SignUpForm } from './SignUpForm.tsx';
-import type { SignInDetails, SignUpDetails } from './useSession.ts';
+import type {
+  PasswordResetDetails,
+  SignInDetails,
+  SignUpDetails,
+} from './useSession.ts';
 
 type SignedOutPageProps = {
   onSignIn: (details: SignInDetails) => Promise<string | null>;
   onSignUp: (details: SignUpDetails) => Promise<string | null>;
+  onResetPassword: (details: PasswordResetDetails) => Promise<string | null>;
 };
 
-function readInviteCodeFromUrl(): string {
-  return new URLSearchParams(window.location.search).get('invite') ?? '';
+type SignedOutForm = 'sign-in' | 'sign-up' | 'reset-password';
+
+const LINK_CODE_PARAMS = ['invite', 'reset'];
+
+function readCodeFromUrl(param: string): string {
+  return new URLSearchParams(window.location.search).get(param) ?? '';
 }
 
-function removeInviteCodeFromUrl() {
+function removeLinkCodesFromUrl() {
   const url = new URL(window.location.href);
-  url.searchParams.delete('invite');
+  for (const param of LINK_CODE_PARAMS) url.searchParams.delete(param);
   window.history.replaceState(null, '', url);
 }
 
-export function SignedOutPage({ onSignIn, onSignUp }: SignedOutPageProps) {
-  const [inviteCode] = useState(readInviteCodeFromUrl);
-  const [isSigningUp, setIsSigningUp] = useState(inviteCode !== '');
+function chooseFirstForm(inviteCode: string, resetCode: string) {
+  if (resetCode) return 'reset-password';
+  if (inviteCode) return 'sign-up';
+  return 'sign-in';
+}
 
-  const signUpAndForgetInvite = async (details: SignUpDetails) => {
-    const problem = await onSignUp(details);
-    if (!problem) removeInviteCodeFromUrl();
-    return problem;
-  };
+export function SignedOutPage({
+  onSignIn,
+  onSignUp,
+  onResetPassword,
+}: SignedOutPageProps) {
+  const [inviteCode] = useState(() => readCodeFromUrl('invite'));
+  const [resetCode] = useState(() => readCodeFromUrl('reset'));
+  const [form, setForm] = useState<SignedOutForm>(() =>
+    chooseFirstForm(inviteCode, resetCode),
+  );
+
+  const submitAndForgetLinkCodes =
+    <Details,>(submit: (details: Details) => Promise<string | null>) =>
+    async (details: Details) => {
+      const problem = await submit(details);
+      if (!problem) removeLinkCodesFromUrl();
+      return problem;
+    };
 
   return (
     <main>
-      {isSigningUp ? (
+      {form === 'sign-up' && (
         <SignUpForm
           inviteCode={inviteCode}
-          onSignUp={signUpAndForgetInvite}
-          onSwitchToSignIn={() => setIsSigningUp(false)}
+          onSignUp={submitAndForgetLinkCodes(onSignUp)}
+          onSwitchToSignIn={() => setForm('sign-in')}
         />
-      ) : (
+      )}
+      {form === 'reset-password' && (
+        <ResetPasswordForm
+          resetCode={resetCode}
+          onResetPassword={submitAndForgetLinkCodes(onResetPassword)}
+          onSwitchToSignIn={() => setForm('sign-in')}
+        />
+      )}
+      {form === 'sign-in' && (
         <SignInForm
           onSignIn={onSignIn}
-          onSwitchToSignUp={() => setIsSigningUp(true)}
+          onSwitchToSignUp={() => setForm('sign-up')}
+          onSwitchToPasswordReset={() => setForm('reset-password')}
         />
       )}
     </main>

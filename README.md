@@ -76,6 +76,12 @@ admin: it gets every activity synced so far, and it can invite other people with
 **Invite someone**, which makes a link that works once, for seven days. Each person
 only sees their own activities and favourite places.
 
+If someone forgets their password, the admin enters their email under **Make reset
+link** and sends them the link, which works once, for three days. If the admin forgets
+theirs, they choose **Forgot your password?** on the sign-in page and enter
+`SETUP_INVITE_CODE` as the reset code. If that's lost too, set a new
+`SETUP_INVITE_CODE` secret and run **Deploy functions** before using it.
+
 ### 7. Add your Garmin key
 
 Each person creates their own key at

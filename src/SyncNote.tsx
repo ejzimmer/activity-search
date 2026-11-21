@@ -18,9 +18,10 @@ function describeSync(sync: SyncStatus | null): string | null {
 }
 
 export function SyncNote({ sync, problem, onSyncNow }: SyncNoteProps) {
+  const syncDescription = describeSync(sync);
   return (
     <div className="sync-note">
-      <p>{describeSync(sync)}</p>
+      {syncDescription && <p>{syncDescription}</p>}
       <button type="button" onClick={onSyncNow} disabled={sync?.running}>
         Sync now
       </button>

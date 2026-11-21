@@ -20,6 +20,11 @@ export interface SignUpDetails extends SignInDetails {
   inviteCode: string;
 }
 
+export interface PasswordResetDetails {
+  resetCode: string;
+  password: string;
+}
+
 async function readProblem(response: Response): Promise<string> {
   const body = (await response
     .json()
@@ -64,7 +69,7 @@ export function useSession() {
   /** Resolves to a problem to show the person, or null once they're signed in. */
   const submitAccountForm = async (
     path: string,
-    details: SignInDetails | SignUpDetails,
+    details: SignInDetails | SignUpDetails | PasswordResetDetails,
   ): Promise<string | null> => {
     try {
       const response = await postAccountRequest(path, details);
@@ -95,5 +100,8 @@ export function useSession() {
         : current,
     );
 
-  return { session, signIn, signUp, signOut, changeGarminKey };
+  const resetPassword = (details: PasswordResetDetails) =>
+    submitAccountForm('/api/reset-password', details);
+
+  return { session, signIn, signUp, resetPassword, signOut, changeGarminKey };
 }
