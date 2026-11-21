@@ -40,3 +40,17 @@ export interface FavouriteLocationResponse {
 }
 
 export type NewFavouriteLocation = Omit<FavouriteLocationResponse, 'id'>;
+
+export interface ProblemResponse {
+  problem: string;
+}
+
+export interface SignedInUserResponse {
+  email: string;
+  isAdmin: boolean;
+}
+
+export interface InviteResponse {
+  code: string;
+  expiresAt: string;
+}

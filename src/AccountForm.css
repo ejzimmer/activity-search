@@ -1,0 +1,74 @@
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 22rem;
+  margin: 3rem auto;
+}
+
+.account-form h1 {
+  margin: 0;
+}
+
+.account-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.account-form input {
+  font: inherit;
+  color: var(--fg);
+  background: var(--bg);
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 0.375rem;
+}
+
+.account-form .help {
+  font-size: 0.8125rem;
+}
+
+.account-form button[type='submit'] {
+  font: inherit;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: var(--accent);
+  color: var(--bg);
+  cursor: pointer;
+}
+
+.account-form button[type='submit']:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.account-form .problem {
+  margin: 0;
+  color: var(--error);
+}
+
+.account-form .footer {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.account-form .footer button {
+  font: inherit;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.account-form input:focus-visible,
+.account-form button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

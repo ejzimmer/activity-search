@@ -15,6 +15,10 @@ export default defineConfig({
           value: process.env.GARMIN_PERSONAL_API_KEY,
           required: true,
         },
+        SETUP_INVITE_CODE: {
+          value: process.env.SETUP_INVITE_CODE,
+          required: false,
+        },
       },
     },
   },
