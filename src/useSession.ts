@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { ProblemResponse, SignedInUserResponse } from '../lib/types.ts';
-
-export type SignedInUser = SignedInUserResponse;
+import {
+  parseSignedInUser,
+  type GarminKeyStatus,
+  type SignedInUser,
+} from './parseSignedInUser.ts';
 
 type SessionState =
   | { status: 'checking' }
@@ -32,6 +35,10 @@ async function postAccountRequest(path: string, details: object) {
   });
 }
 
+async function readSignedInUser(response: Response): Promise<SignedInUser> {
+  return parseSignedInUser((await response.json()) as SignedInUserResponse);
+}
+
 export function useSession() {
   const [session, setSession] = useState<SessionState>({ status: 'checking' });
 
@@ -43,7 +50,7 @@ export function useSession() {
           response.ok
             ? {
                 status: 'signed-in',
-                user: (await response.json()) as SignedInUser,
+                user: await readSignedInUser(response),
               }
             : { status: 'signed-out' },
         );
@@ -64,7 +71,7 @@ export function useSession() {
       if (!response.ok) return readProblem(response);
       setSession({
         status: 'signed-in',
-        user: (await response.json()) as SignedInUser,
+        user: await readSignedInUser(response),
       });
       return null;
     } catch (error) {
@@ -81,5 +88,12 @@ export function useSession() {
     setSession({ status: 'signed-out' });
   };
 
-  return { session, signIn, signUp, signOut };
+  const changeGarminKey = (garminKey: GarminKeyStatus | null) =>
+    setSession((current) =>
+      current.status === 'signed-in'
+        ? { ...current, user: { ...current.user, garminKey } }
+        : current,
+    );
+
+  return { session, signIn, signUp, signOut, changeGarminKey };
 }

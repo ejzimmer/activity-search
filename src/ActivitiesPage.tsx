@@ -1,5 +1,5 @@
 import './ActivitiesPage.css';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivitiesMap } from './ActivitiesMap.tsx';
 import { ActivitiesTable } from './ActivitiesTable.tsx';
 import {
@@ -9,15 +9,47 @@ import {
 } from './activityQuery.ts';
 import { ActivityFilters } from './ActivityFilters.tsx';
 import { NoActivitiesMessage } from './NoActivitiesMessage.tsx';
+import type { GarminKeyStatus } from './parseSignedInUser.ts';
 import { PaginationNav } from './PaginationNav.tsx';
 import { SyncNote } from './SyncNote.tsx';
 import { useActivitiesPage } from './useActivitiesPage.ts';
 import { useActivityQuery } from './useActivityQuery.ts';
 import { useFavouriteLocations } from './useFavouriteLocations.ts';
 
-export function ActivitiesPage() {
+type ActivitiesPageProps = {
+  garminKey: GarminKeyStatus | null;
+};
+
+async function requestSyncNow() {
+  const response = await fetch('/api/sync-now', { method: 'POST' });
+  if (!response.ok) throw new Error(`The API returned ${response.status}`);
+}
+
+export function ActivitiesPage({ garminKey }: ActivitiesPageProps) {
   const { query, goToPage, changeFilters } = useActivityQuery();
-  const state = useActivitiesPage(query);
+  const { state, expectSyncToStart } = useActivitiesPage(query);
+  const [syncProblem, setSyncProblem] = useState<string | null>(null);
+  const garminKeySavedAt = garminKey?.savedAt ?? null;
+  const previousGarminKeySavedAt = useRef(garminKeySavedAt);
+
+  useEffect(() => {
+    if (
+      garminKeySavedAt &&
+      garminKeySavedAt !== previousGarminKeySavedAt.current
+    )
+      expectSyncToStart();
+    previousGarminKeySavedAt.current = garminKeySavedAt;
+  }, [garminKeySavedAt]);
+
+  const syncNow = async () => {
+    try {
+      await requestSyncNow();
+      setSyncProblem(null);
+      expectSyncToStart();
+    } catch (error) {
+      setSyncProblem(`Couldn't start a sync: ${(error as Error).message}`);
+    }
+  };
   const { data } = state;
   const { favourites, errorMessage, addFavourite, removeFavourite } =
     useFavouriteLocations();
@@ -74,6 +106,7 @@ export function ActivitiesPage() {
         <NoActivitiesMessage
           isFiltered={hasActiveFilters(query)}
           isSyncRunning={data.sync?.running ?? false}
+          hasGarminKey={garminKey !== null}
         />
       ) : (
         <ActivitiesTable
@@ -92,7 +125,13 @@ export function ActivitiesPage() {
         onPageChange={goToPage}
       />
 
-      {data?.sync && <SyncNote sync={data.sync} />}
+      {garminKey && (
+        <SyncNote
+          sync={data?.sync ?? null}
+          problem={syncProblem}
+          onSyncNow={syncNow}
+        />
+      )}
     </main>
   );
 }

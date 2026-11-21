@@ -1,5 +1,6 @@
 import type { Sql } from './db.ts';
 import { createSecretToken, hashSecretToken } from './secret-tokens.ts';
+import type { GarminKeyResponse } from './types.ts';
 
 const SESSION_COOKIE_NAME = 'session';
 const SESSION_LIFETIME = Temporal.Duration.from({ days: 30 });
@@ -8,6 +9,7 @@ export interface SignedInUser {
   id: number;
   email: string;
   isAdmin: boolean;
+  garminKey: GarminKeyResponse | null;
 }
 
 /** The API sits behind the site's /api/* proxy, so the browser sees the cookie as the site's own. */
@@ -54,6 +56,16 @@ export async function endSession(sql: Sql, request: Request): Promise<void> {
     await sql`DELETE FROM sessions WHERE token_hash = ${hashSecretToken(token)}`;
 }
 
+export function selectGarminKeyStatus(sql: Sql) {
+  return sql`
+    CASE WHEN users.garmin_key_saved_at IS NULL THEN NULL
+    ELSE json_build_object(
+      'savedAt', users.garmin_key_saved_at,
+      'isRejected', users.is_garmin_key_rejected
+    ) END AS "garminKey"
+  `;
+}
+
 export async function findSignedInUser(
   sql: Sql,
   request: Request,
@@ -61,7 +73,7 @@ export async function findSignedInUser(
   const token = readSessionToken(request);
   if (!token) return null;
   const [user] = await sql`
-    SELECT users.id, users.email, users.is_admin AS "isAdmin"
+    SELECT users.id, users.email, users.is_admin AS "isAdmin", ${selectGarminKeyStatus(sql)}
     FROM sessions JOIN users ON users.id = sessions.user_id
     WHERE sessions.token_hash = ${hashSecretToken(token)} AND sessions.expires_at > now()
   `;

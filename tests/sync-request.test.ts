@@ -1,45 +1,67 @@
 import { describe, expect, it } from 'vitest';
-import { createSyncToken } from '../lib/sync.ts';
-import { isTrustedSyncRequest } from '../lib/sync-request.ts';
+import { GarminKeyEncryption } from '../lib/garmin-key-encryption.ts';
+import {
+  isScheduledSyncRequest,
+  readTrustedSyncUserId,
+} from '../lib/sync-request.ts';
 
-const apiKey = 'garmin-key';
+const encryption = new GarminKeyEncryption('test encryption secret');
 
-const createSyncRequest = (headers: Record<string, string>) =>
-  new Request('https://example.test/sync', { method: 'POST', headers });
+const createSyncRequest = (path: string, headers: Record<string, string>) =>
+  new Request(`https://example.test${path}`, { method: 'POST', headers });
 
-describe('isTrustedSyncRequest', () => {
+describe('isScheduledSyncRequest', () => {
   describe('when Neon scheduled the request', () => {
-    it('trusts it', () => {
-      const request = createSyncRequest({
+    it('says so', () => {
+      const request = createSyncRequest('/sync', {
         'x-neon-trigger-invocation-id': 'inv_123',
       });
-      expect(isTrustedSyncRequest(request, apiKey)).toBe(true);
+      expect(isScheduledSyncRequest(request)).toBe(true);
     });
   });
 
-  describe('when the request carries a sync token', () => {
-    describe('made from the Garmin key', () => {
-      it('trusts it', () => {
-        const request = createSyncRequest({
-          'x-sync-token': createSyncToken(apiKey),
-        });
-        expect(isTrustedSyncRequest(request, apiKey)).toBe(true);
-      });
+  describe('when anyone else sent it', () => {
+    it('says not', () => {
+      expect(isScheduledSyncRequest(createSyncRequest('/sync', {}))).toBe(
+        false,
+      );
     });
+  });
+});
 
-    describe('made from a different key', () => {
-      it('rejects it', () => {
-        const request = createSyncRequest({
-          'x-sync-token': createSyncToken('someone-else'),
-        });
-        expect(isTrustedSyncRequest(request, apiKey)).toBe(false);
+describe('readTrustedSyncUserId', () => {
+  describe('when the sync token was made for the user in the URL', () => {
+    it('reads the user', () => {
+      const request = createSyncRequest('/sync?user=7', {
+        'x-sync-token': encryption.createSyncToken(7),
       });
+      expect(readTrustedSyncUserId(request, encryption)).toBe(7);
     });
   });
 
-  describe('when the request has neither', () => {
+  describe('when the sync token was made for a different user', () => {
     it('rejects it', () => {
-      expect(isTrustedSyncRequest(createSyncRequest({}), apiKey)).toBe(false);
+      const request = createSyncRequest('/sync?user=7', {
+        'x-sync-token': encryption.createSyncToken(8),
+      });
+      expect(readTrustedSyncUserId(request, encryption)).toBeNull();
+    });
+  });
+
+  describe('when the sync token was made with a different secret', () => {
+    it('rejects it', () => {
+      const otherEncryption = new GarminKeyEncryption('another secret');
+      const request = createSyncRequest('/sync?user=7', {
+        'x-sync-token': otherEncryption.createSyncToken(7),
+      });
+      expect(readTrustedSyncUserId(request, encryption)).toBeNull();
+    });
+  });
+
+  describe('when there is no sync token', () => {
+    it('rejects it', () => {
+      const request = createSyncRequest('/sync?user=7', {});
+      expect(readTrustedSyncUserId(request, encryption)).toBeNull();
     });
   });
 });

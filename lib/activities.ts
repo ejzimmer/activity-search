@@ -99,11 +99,10 @@ export async function getActivitiesPage(
       `,
       sql`SELECT count(*)::int AS count FROM activities WHERE ${filterCondition}`,
       sql`SELECT DISTINCT sport_type FROM activities WHERE user_id = ${user.id} AND sport_type IS NOT NULL`,
-      // The sync still runs on one Garmin key, the admin's.
       sql`
         SELECT last_started_at, last_finished_at, last_result,
                coalesce(locked_until > now(), false) AS running
-        FROM sync_state WHERE id = 1 AND ${user.isAdmin}
+        FROM user_sync_state WHERE user_id = ${user.id}
       `,
     ]);
     const total = count as number;

@@ -2,6 +2,8 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { MAX_SIGN_IN_FAILURES } from '../lib/accounts.ts';
 import { routeApiRequest } from '../lib/api-routes.ts';
 import type { Sql } from '../lib/db.ts';
+import { GarminApiError } from '../lib/garmin.ts';
+import { GarminKeyEncryption } from '../lib/garmin-key-encryption.ts';
 import {
   createTestDatabase,
   type TestDatabase,
@@ -10,6 +12,15 @@ import {
 const SETUP_INVITE_CODE = 'first-account-setup-code';
 const ADMIN = { email: 'erin@example.test', password: 'correct horse battery' };
 const FRIEND = { email: 'friend@example.test', password: 'friendly password' };
+const GARMIN_KEY_GARMIN_ACCEPTS = 'garmin-key-that-works';
+
+const encryption = new GarminKeyEncryption('test encryption secret');
+let usersSyncStartedFor: number[] = [];
+
+async function checkGarminKey(garminKey: string) {
+  if (garminKey !== GARMIN_KEY_GARMIN_ACCEPTS)
+    throw new GarminApiError(401, 'https://garmin.example.test/token', '');
+}
 
 let testDatabase: TestDatabase;
 let sql: Sql;
@@ -21,6 +32,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   await testDatabase.clearTables();
+  usersSyncStartedFor = [];
 });
 
 interface ApiCall {
@@ -42,7 +54,15 @@ function callApi(
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
-    { sql, setupInviteCode: SETUP_INVITE_CODE },
+    {
+      sql,
+      setupInviteCode: SETUP_INVITE_CODE,
+      garminKeyServices: {
+        encryption,
+        checkGarminKey,
+        startSyncForUser: (userId) => usersSyncStartedFor.push(userId),
+      },
+    },
   );
 }
 
@@ -108,6 +128,7 @@ describe('the API', () => {
           expect(await session.json()).toEqual({
             email: ADMIN.email,
             isAdmin: true,
+            garminKey: null,
           });
         });
 
@@ -139,6 +160,7 @@ describe('the API', () => {
         expect(await session.json()).toEqual({
           email: FRIEND.email,
           isAdmin: false,
+          garminKey: null,
         });
       });
 
@@ -315,6 +337,122 @@ describe('the API', () => {
           sessionCookie: friendCookie,
         });
         expect(response.status).toBe(403);
+      });
+    });
+  });
+  describe('saving a Garmin key', () => {
+    const saveGarminKey = (sessionCookie: string, garminKey: string) =>
+      callApi('/garmin-key', {
+        method: 'PUT',
+        sessionCookie,
+        body: { garminKey },
+      });
+
+    describe('that Garmin accepts', () => {
+      it('shows the key as saved', async () => {
+        const adminCookie = await signUpAdmin();
+        await saveGarminKey(adminCookie, GARMIN_KEY_GARMIN_ACCEPTS);
+        const session = await callApi('/session', {
+          sessionCookie: adminCookie,
+        });
+        const { garminKey } = (await session.json()) as {
+          garminKey: { savedAt: string; isRejected: boolean };
+        };
+        expect(garminKey.isRejected).toBe(false);
+        expect(Temporal.Instant.from(garminKey.savedAt)).toBeInstanceOf(
+          Temporal.Instant,
+        );
+      });
+
+      it('stores it encrypted', async () => {
+        const adminCookie = await signUpAdmin();
+        await saveGarminKey(adminCookie, GARMIN_KEY_GARMIN_ACCEPTS);
+        const [{ stored }] = (await sql`
+          SELECT garmin_key_encrypted AS stored FROM users
+        `) as Array<{ stored: string }>;
+        expect(stored).not.toContain(GARMIN_KEY_GARMIN_ACCEPTS);
+        expect(encryption.decryptGarminKey(stored)).toBe(
+          GARMIN_KEY_GARMIN_ACCEPTS,
+        );
+      });
+
+      it('starts a sync for that person', async () => {
+        const adminCookie = await signUpAdmin();
+        await saveGarminKey(adminCookie, GARMIN_KEY_GARMIN_ACCEPTS);
+        expect(usersSyncStartedFor).toEqual([1]);
+      });
+
+      describe('after a sync found the old key rejected', () => {
+        it('shows the new key as working', async () => {
+          const adminCookie = await signUpAdmin();
+          await saveGarminKey(adminCookie, GARMIN_KEY_GARMIN_ACCEPTS);
+          await sql`UPDATE users SET is_garmin_key_rejected = true`;
+
+          const response = await saveGarminKey(
+            adminCookie,
+            GARMIN_KEY_GARMIN_ACCEPTS,
+          );
+          expect(await response.json()).toMatchObject({ isRejected: false });
+        });
+      });
+    });
+
+    describe('that Garmin rejects', () => {
+      it('refuses it without starting a sync', async () => {
+        const adminCookie = await signUpAdmin();
+        const response = await saveGarminKey(adminCookie, 'mistyped-key');
+        expect(response.status).toBe(400);
+        expect(usersSyncStartedFor).toEqual([]);
+      });
+    });
+  });
+
+  describe('removing the Garmin key', () => {
+    it('shows the person as having no key', async () => {
+      const adminCookie = await signUpAdmin();
+      await callApi('/garmin-key', {
+        method: 'PUT',
+        sessionCookie: adminCookie,
+        body: { garminKey: GARMIN_KEY_GARMIN_ACCEPTS },
+      });
+      await callApi('/garmin-key', {
+        method: 'DELETE',
+        sessionCookie: adminCookie,
+      });
+      const session = await callApi('/session', { sessionCookie: adminCookie });
+      expect(await session.json()).toMatchObject({ garminKey: null });
+    });
+  });
+
+  describe('syncing now', () => {
+    describe('without a Garmin key', () => {
+      it('asks for the key first', async () => {
+        const adminCookie = await signUpAdmin();
+        const response = await callApi('/sync-now', {
+          method: 'POST',
+          sessionCookie: adminCookie,
+        });
+        expect(response.status).toBe(409);
+        expect(usersSyncStartedFor).toEqual([]);
+      });
+    });
+
+    describe('with a Garmin key', () => {
+      it("starts that person's sync", async () => {
+        const adminCookie = await signUpAdmin();
+        const friendCookie = await signUpFriend(adminCookie);
+        await callApi('/garmin-key', {
+          method: 'PUT',
+          sessionCookie: friendCookie,
+          body: { garminKey: GARMIN_KEY_GARMIN_ACCEPTS },
+        });
+        usersSyncStartedFor = [];
+
+        await callApi('/sync-now', {
+          method: 'POST',
+          sessionCookie: friendCookie,
+        });
+        expect(usersSyncStartedFor).toEqual([2]);
       });
     });
   });

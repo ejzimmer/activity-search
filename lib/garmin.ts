@@ -72,6 +72,11 @@ export class GarminClient {
     return value;
   }
 
+  /** Throws a GarminApiError if Garmin won't accept the key. */
+  async checkApiKey(): Promise<void> {
+    await this.getAccessToken();
+  }
+
   private async getResponse(
     path: string,
     params: Record<string, string | number> = {},

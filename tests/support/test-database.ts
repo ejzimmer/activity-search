@@ -54,7 +54,7 @@ export async function createTestDatabase(): Promise<TestDatabase> {
     sql,
     clearTables: async () => {
       await database.exec(
-        'TRUNCATE users, sessions, invites, sign_in_failures, activities, favourite_locations, sync_state RESTART IDENTITY CASCADE',
+        'TRUNCATE users, sessions, invites, sign_in_failures, activities, favourite_locations, user_sync_state RESTART IDENTITY CASCADE',
       );
       await ensureSchema(sql);
     },
