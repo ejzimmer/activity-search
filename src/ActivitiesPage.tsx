@@ -64,7 +64,7 @@ export function ActivitiesPage({ garminKey }: ActivitiesPageProps) {
 
   return (
     <main>
-      <h1>Activities</h1>
+      <h1 className="visually-hidden">Activities</h1>
 
       {state.status === 'error' && (
         <p role="alert" className="error">
